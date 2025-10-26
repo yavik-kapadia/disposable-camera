@@ -276,51 +276,14 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
     // Initial orientation
     updateOrientation();
 
-    if (!cameraActive) {
-      // Still listen to orientation even if camera is off
-      window.addEventListener('resize', updateOrientation);
-      return () => {
-        window.removeEventListener('resize', updateOrientation);
-      };
-    }
-
     let debounceTimer: NodeJS.Timeout;
 
     const handleOrientationChange = () => {
-      // Update orientation immediately (instant UI update)
-      updateOrientation();
-      
-      // Debounce camera restart to avoid rapid restarts
+      // Update orientation immediately (instant UI update, no camera restart)
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(async () => {
-        console.log('[Camera] Restarting camera for new orientation...');
-        
-        // Stop current stream
-        if (stream) {
-          stream.getTracks().forEach((track) => track.stop());
-        }
-
-        // Small delay to allow orientation to settle
-        setTimeout(async () => {
-          try {
-            const mediaStream = await navigator.mediaDevices.getUserMedia({
-              video: {
-                facingMode: facingMode,
-                width: { ideal: 1920 },
-                height: { ideal: 1080 }
-              },
-            });
-
-            if (videoRef.current) {
-              videoRef.current.srcObject = mediaStream;
-              setStream(mediaStream);
-              console.log('[Camera] Camera restarted successfully');
-            }
-          } catch (err) {
-            console.error('[Camera] Failed to restart camera:', err);
-          }
-        }, 300);
-      }, 300);
+      debounceTimer = setTimeout(() => {
+        updateOrientation();
+      }, 100); // Short debounce just to avoid duplicate resize events
     };
 
     // Listen to both orientationchange and resize (resize is more reliable)
