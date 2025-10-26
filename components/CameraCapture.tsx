@@ -93,15 +93,29 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
     };
   }, []);
 
-  // Fullscreen change listener
+  // Fullscreen change listener (with vendor prefixes)
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      const isFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+      setIsFullscreen(isFullscreen);
     };
 
+    // Listen to all vendor-prefixed fullscreen events
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+    
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
     };
   }, []);
 
@@ -154,13 +168,46 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
     if (!containerRef.current) return;
 
     try {
-      if (!document.fullscreenElement) {
-        await containerRef.current.requestFullscreen();
+      const elem = containerRef.current as any;
+      
+      // Check if already in fullscreen
+      const isFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+
+      if (!isFullscreen) {
+        // Enter fullscreen with vendor prefixes
+        if (elem.requestFullscreen) {
+          await elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) {
+          await elem.webkitRequestFullscreen();
+        } else if (elem.mozRequestFullScreen) {
+          await elem.mozRequestFullScreen();
+        } else if (elem.msRequestFullscreen) {
+          await elem.msRequestFullscreen();
+        } else {
+          throw new Error('Fullscreen API not supported');
+        }
       } else {
-        await document.exitFullscreen();
+        // Exit fullscreen with vendor prefixes
+        const doc = document as any;
+        if (doc.exitFullscreen) {
+          await doc.exitFullscreen();
+        } else if (doc.webkitExitFullscreen) {
+          await doc.webkitExitFullscreen();
+        } else if (doc.mozCancelFullScreen) {
+          await doc.mozCancelFullScreen();
+        } else if (doc.msExitFullscreen) {
+          await doc.msExitFullscreen();
+        }
       }
     } catch (err) {
       console.error('Fullscreen error:', err);
+      // Show user-friendly error
+      alert('Fullscreen mode is not supported on this browser');
     }
   };
 
