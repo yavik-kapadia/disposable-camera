@@ -463,7 +463,7 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
           </div>
         </div>
 
-        {!cameraActive && (
+        {!cameraActive && !switching && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 p-6">
             <button
               onClick={startCamera}
