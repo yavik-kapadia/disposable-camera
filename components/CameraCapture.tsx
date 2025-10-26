@@ -267,21 +267,10 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
       const newOrientation = isLandscape ? 'landscape' : 'portrait';
       setOrientation(newOrientation);
       
-      // Calculate rotation to keep video "right-side-up"
-      // iOS cameras capture in landscape by default
-      let videoRotation = 0;
+      // Don't rotate - let iOS handle camera orientation naturally
+      setRotation(0);
       
-      if (newOrientation === 'portrait') {
-        // In portrait mode, rotate the video to appear upright
-        videoRotation = facingMode === 'environment' ? 90 : -90;
-      } else {
-        // In landscape mode, no rotation needed
-        videoRotation = 0;
-      }
-      
-      setRotation(videoRotation);
-      
-      console.log('[Camera] Orientation:', newOrientation, 'FacingMode:', facingMode, 'Rotation:', videoRotation);
+      console.log('[Camera] Orientation:', newOrientation, 'FacingMode:', facingMode);
     };
 
     // Initial orientation
@@ -552,9 +541,8 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
                    filter === 'sepia' ? 'sepia(100%)' : 
                    filter === 'vintage' ? 'saturate(80%) sepia(20%) hue-rotate(-10deg)' : 
                    'none',
-            transform: `rotate(${rotation}deg) scale(${zoom})`,
-            transformOrigin: 'center center',
-            transition: 'transform 0.3s ease-out'
+            transform: `scale(${zoom})`,
+            transition: 'transform 0.2s ease-out'
           }}
         />
         <canvas ref={canvasRef} className="hidden" />
