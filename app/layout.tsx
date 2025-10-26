@@ -3,7 +3,6 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { RegisterServiceWorker } from "./register-sw";
 
 const cothamSans = localFont({
   src: "./fonts/Cotham Sans Regular.otf",
@@ -76,7 +75,6 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <AuthProvider>
-            <RegisterServiceWorker />
             {children}
           </AuthProvider>
         </ThemeProvider>

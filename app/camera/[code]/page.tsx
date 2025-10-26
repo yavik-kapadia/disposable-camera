@@ -55,6 +55,20 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
     console.log('[PWA Debug] Manifest URL:', manifestUrl);
     console.log('[PWA Debug] Current URL:', window.location.href);
     
+    // Register service worker with event-specific scope (after manifest is set)
+    if ('serviceWorker' in navigator) {
+      const swScope = `/camera/${resolvedParams.code}/`;
+      navigator.serviceWorker
+        .register('/sw.js', { scope: swScope })
+        .then((registration) => {
+          console.log('[PWA Debug] Service Worker registered with scope:', swScope);
+          console.log('[PWA Debug] Registration:', registration);
+        })
+        .catch((error) => {
+          console.log('[PWA Debug] Service Worker registration failed:', error);
+        });
+    }
+    
     // Listen for PWA install prompt (Android Chrome/Edge)
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
