@@ -276,14 +276,51 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
     // Initial orientation
     updateOrientation();
 
+    if (!cameraActive) {
+      // Still listen to orientation even if camera is off
+      window.addEventListener('resize', updateOrientation);
+      return () => {
+        window.removeEventListener('resize', updateOrientation);
+      };
+    }
+
     let debounceTimer: NodeJS.Timeout;
 
     const handleOrientationChange = () => {
-      // Update orientation and rotation immediately (instant, no camera restart)
+      // Update orientation immediately (instant UI update)
+      updateOrientation();
+      
+      // Debounce camera restart to avoid rapid restarts
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        updateOrientation();
-      }, 50); // Very short debounce just to avoid duplicate events
+      debounceTimer = setTimeout(async () => {
+        console.log('[Camera] Restarting camera for new orientation...');
+        
+        // Stop current stream
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+
+        // Small delay to allow orientation to settle
+        setTimeout(async () => {
+          try {
+            const mediaStream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                facingMode: facingMode,
+                width: { ideal: 1920 },
+                height: { ideal: 1080 }
+              },
+            });
+
+            if (videoRef.current) {
+              videoRef.current.srcObject = mediaStream;
+              setStream(mediaStream);
+              console.log('[Camera] Camera restarted successfully');
+            }
+          } catch (err) {
+            console.error('[Camera] Failed to restart camera:', err);
+          }
+        }, 300);
+      }, 300);
     };
 
     // Listen to both orientationchange and resize (resize is more reliable)
@@ -523,11 +560,11 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
 
       <div
         ref={containerRef}
-        className={`relative bg-black overflow-hidden shadow-2xl transition-all ${
+        className={`relative bg-black overflow-hidden shadow-2xl transition-all duration-300 ${
           isFullscreen ? 'fixed inset-0 z-50 rounded-none' : 'rounded-2xl w-full max-w-4xl mx-auto'
         }`}
         style={{
-          aspectRatio: isFullscreen ? 'auto' : '4/3'
+          aspectRatio: isFullscreen ? 'auto' : (orientation === 'landscape' ? '16/9' : '3/4')
         }}
       >
         <video
@@ -535,7 +572,7 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
           autoPlay
           playsInline
           muted
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
           style={{
             filter: filter === 'bw' ? 'grayscale(100%)' : 
                    filter === 'sepia' ? 'sepia(100%)' : 
