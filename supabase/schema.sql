@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS events (
   name TEXT NOT NULL,
   description TEXT,
   access_code TEXT NOT NULL UNIQUE,
+  creator_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   creator_name TEXT,
   is_active BOOLEAN NOT NULL DEFAULT true,
   expires_at TIMESTAMPTZ
@@ -37,15 +38,15 @@ CREATE POLICY "Anyone can read active events"
   ON events FOR SELECT
   USING (is_active = true);
 
--- Allow anyone to create events
-CREATE POLICY "Anyone can create events"
+-- Only authenticated users can create events
+CREATE POLICY "Authenticated users can create events"
   ON events FOR INSERT
-  WITH CHECK (true);
+  WITH CHECK (auth.uid() = creator_id);
 
--- Allow creators to update their events (would need auth for proper implementation)
-CREATE POLICY "Anyone can update events"
+-- Only event creators can update their events
+CREATE POLICY "Creators can update their own events"
   ON events FOR UPDATE
-  USING (true);
+  USING (auth.uid() = creator_id);
 
 -- RLS Policies for images table
 -- Allow anyone to read images for active events

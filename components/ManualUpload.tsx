@@ -4,6 +4,43 @@ import { useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { compressImage, formatFileSize } from '@/utils/helpers';
 
+// Helper function to trigger thumbnail generation
+async function triggerThumbnailGeneration(imageId: string, filePath: string, eventId: string) {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn('Supabase environment variables not found, skipping thumbnail generation');
+      return { success: false, reason: 'missing_env' };
+    }
+
+    console.log('Calling edge function for thumbnail generation:', imageId);
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/generate-thumbnail`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+      },
+      body: JSON.stringify({ imageId, filePath, eventId }),
+    });
+
+    if (!response.ok) {
+      console.warn(`Edge function returned ${response.status}: ${response.statusText}`);
+      return { success: false, reason: 'edge_function_error', status: response.status };
+    }
+
+    const result = await response.json();
+    console.log('Thumbnail generation successful:', result);
+    return result;
+  } catch (error) {
+    // Silently fail - thumbnails are optional
+    console.warn('Thumbnail generation failed (non-critical):', error);
+    return { success: false, reason: 'exception', error: error instanceof Error ? error.message : 'unknown' };
+  }
+}
+
 interface ManualUploadProps {
   eventId: string;
   onUploadSuccess?: () => void;
@@ -36,13 +73,13 @@ export default function ManualUpload({ eventId, onUploadSuccess }: ManualUploadP
         // Compress image
         const compressedBlob = await compressImage(file);
 
-        // Generate unique filename
+        // Generate unique filenames
         const timestamp = Date.now();
         const extension = file.name.split('.').pop() || 'jpg';
         const fileName = `photo_${timestamp}_${i}.${extension}`;
         const filePath = `${eventId}/${fileName}`;
 
-        // Upload to Supabase Storage
+        // Upload full-size image to Supabase Storage
         const { error: uploadError } = await supabase.storage
           .from('event-images')
           .upload(filePath, compressedBlob, {
@@ -52,20 +89,30 @@ export default function ManualUpload({ eventId, onUploadSuccess }: ManualUploadP
 
         if (uploadError) throw uploadError;
 
-        // Save metadata to database
-        const { error: dbError } = await supabase.from('images').insert({
-          event_id: eventId,
-          file_path: filePath,
-          file_name: fileName,
-          uploaded_by: guestName || null,
-          metadata: {
-            timestamp,
-            type: 'upload',
-            originalName: file.name,
-          },
-        });
+        // Save metadata to database (thumbnail will be added by edge function)
+        const { data: imageData, error: dbError } = await supabase
+          .from('images')
+          .insert({
+            event_id: eventId,
+            file_path: filePath,
+            file_name: fileName,
+            uploaded_by: guestName || null,
+            metadata: {
+              timestamp,
+              type: 'upload',
+              originalName: file.name,
+            },
+          })
+          .select()
+          .single();
 
         if (dbError) throw dbError;
+
+        // Trigger edge function to generate thumbnail in background (don't wait)
+        triggerThumbnailGeneration(imageData.id, filePath, eventId).catch((err) => {
+          console.error('Thumbnail generation failed (non-blocking):', err);
+          // Don't fail the upload if thumbnail generation fails
+        });
 
         // Update progress
         setUploadProgress(((i + 1) / totalFiles) * 100);

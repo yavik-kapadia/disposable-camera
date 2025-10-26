@@ -22,6 +22,7 @@ interface Image {
   created_at: string;
   file_path: string;
   file_name: string;
+  thumbnail_path?: string | null;
   uploaded_by: string | null;
 }
 
@@ -152,17 +153,17 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50 flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
+      <div className="min-h-screen bg-linear-to-br from-orange-50 via-orange-100 to-orange-50 dark:from-black dark:via-black dark:to-black flex items-center justify-center">
+        <div className="text-xl text-gray-800 dark:text-gray-200">Loading...</div>
       </div>
     );
   }
 
   if (error || !event) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50 flex items-center justify-center">
+      <div className="min-h-screen bg-linear-to-br from-orange-50 via-orange-100 to-orange-50 dark:from-black dark:via-black dark:to-black flex items-center justify-center">
         <div className="text-center">
-          <p className="text-xl text-red-600 mb-4">{error || 'Event not found'}</p>
+          <p className="text-xl text-red-600 dark:text-red-400 mb-4">{error || 'Event not found'}</p>
           <button
             onClick={() => router.push('/')}
             className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
@@ -175,26 +176,26 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50">
+    <div className="min-h-screen bg-linear-to-br from-orange-50 via-orange-100 to-orange-50 dark:from-black dark:via-black dark:to-black transition-colors duration-200">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => router.push('/')}
-            className="text-orange-600 hover:text-orange-700 mb-4 flex items-center gap-2"
+            className="text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 mb-4 flex items-center gap-2"
           >
             ← Back to Home
           </button>
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">{event.name}</h1>
-          {event.description && <p className="text-gray-600">{event.description}</p>}
-          <p className="text-sm text-gray-500 mt-2">Created {formatDate(event.created_at)}</p>
+          <h1 className="text-4xl font-bold text-gray-800 dark:text-gray-100 mb-2">{event.name}</h1>
+          {event.description && <p className="text-gray-600 dark:text-gray-400">{event.description}</p>}
+          <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">Created {formatDate(event.created_at)}</p>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* QR Code and Access Info */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-xl p-6 sticky top-8">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Event Access</h2>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 sticky top-8 border border-transparent dark:border-gray-700">
+              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Event Access</h2>
 
               {/* QR Code */}
               <div className="mb-6">
@@ -203,7 +204,7 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
 
               {/* Access Code */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Access Code
                 </label>
                 <div className="flex items-center gap-2">
@@ -211,11 +212,11 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
                     type="text"
                     value={event.access_code}
                     readOnly
-                    className="flex-1 px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-center font-mono text-xl text-gray-500 font-bold"
+                    className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-center font-mono text-xl text-gray-800 dark:text-gray-200 font-bold"
                   />
                   <button
                     onClick={() => copyToClipboard(event.access_code)}
-                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg"
+                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg"
                     title="Copy code"
                   >
                     📋
@@ -225,7 +226,7 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
 
               {/* Share URL */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Share Link
                 </label>
                 <div className="flex items-center gap-2">
@@ -233,11 +234,11 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
                     type="text"
                     value={cameraUrl}
                     readOnly
-                    className="flex-1 px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-sm text-gray-500 truncate"
+                    className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-400 truncate"
                   />
                   <button
                     onClick={() => copyToClipboard(cameraUrl)}
-                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg"
+                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg"
                     title="Copy link"
                   >
                     📋
@@ -250,7 +251,7 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
                 <button
                   onClick={downloadAllImages}
                   disabled={downloading || images.length === 0}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-lg font-semibold hover:from-orange-700 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 bg-linear-to-r from-orange-600 to-orange-500 dark:from-orange-500 dark:to-orange-600 text-white rounded-lg font-semibold hover:from-orange-700 hover:to-orange-600 dark:hover:from-orange-600 dark:hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {downloading ? 'Downloading...' : `Download All (${images.length})`}
                 </button>
@@ -267,12 +268,12 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
               </div>
 
               {/* Status */}
-              <div className="mt-4 p-3 rounded-lg bg-gray-50">
-                <p className="text-sm text-black-600">
+              <div className="mt-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   Status:{' '}
                   <span
                     className={`font-semibold ${
-                      event.is_active ? 'text-green-600' : 'text-red-600'
+                      event.is_active ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                     }`}
                   >
                     {event.is_active ? 'Active' : 'Closed'}
@@ -284,13 +285,13 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
 
           {/* Image Gallery */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl shadow-xl p-6">
-              <h2 className="text-xl text-gray-800 font-bold mb-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 border border-transparent dark:border-gray-700">
+              <h2 className="text-xl text-gray-800 dark:text-gray-100 font-bold mb-4">
                 Photos ({images.length})
               </h2>
 
               {images.length === 0 ? (
-                <div className="text-center py-12 text-black-500">
+                <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                   <div className="text-6xl mb-4">📷</div>
                   <p>No photos yet!</p>
                   <p className="text-sm mt-2">Share the access code with guests to start collecting photos</p>
@@ -323,10 +324,14 @@ function ImageCard({ image }: { image: Image }) {
     try {
       console.log('[ImageCard] Loading image:', image.file_name);
 
+      // Use thumbnail if available, otherwise use full image
+      const imagePath = image.thumbnail_path || image.file_path;
+      console.log('[ImageCard] Using path:', imagePath, image.thumbnail_path ? '(thumbnail)' : '(full)');
+
       // First try to get public URL
       const { data } = supabase.storage
         .from('event-images')
-        .getPublicUrl(image.file_path);
+        .getPublicUrl(imagePath);
 
       console.log('[ImageCard] Public URL generated:', data.publicUrl);
 
@@ -343,7 +348,7 @@ function ImageCard({ image }: { image: Image }) {
         // Fallback to signed URL (24 hour expiry)
         const { data: signedData, error: signedError } = await supabase.storage
           .from('event-images')
-          .createSignedUrl(image.file_path, 86400); // 24 hours
+          .createSignedUrl(imagePath, 86400); // 24 hours
 
         if (signedError) throw signedError;
         if (signedData) {

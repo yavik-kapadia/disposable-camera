@@ -13,6 +13,7 @@ A modern web application for crowd-sourcing photos from event attendees. Built w
 - **Manual Upload**: Upload existing photos from device gallery
 - **Real-time Updates**: See new photos appear in real-time as guests upload them
 - **Bulk Download**: Event creators can download all photos as a ZIP file
+- **Server-Side Thumbnails**: Fast-loading WebP thumbnails generated automatically via Edge Functions
 - **Guest Names**: Optional guest identification on uploaded photos
 - **Mobile-First Design**: Responsive design optimized for mobile devices
 - **Privacy Controls**: Event creators can close events to stop new uploads
@@ -21,9 +22,10 @@ A modern web application for crowd-sourcing photos from event attendees. Built w
 
 - **Frontend**: Next.js 15 with App Router, React, TypeScript
 - **Styling**: Tailwind CSS
-- **Backend**: Supabase (PostgreSQL + Storage)
+- **Backend**: Supabase (PostgreSQL + Storage + Edge Functions)
 - **QR Code**: qrcode library
 - **File Handling**: JSZip for bulk downloads
+- **Image Processing**: Server-side thumbnail generation (WebP)
 
 ## Prerequisites
 
@@ -97,7 +99,22 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-### 4. Run the Development Server
+### 4. Deploy Edge Function (Optional but Recommended)
+
+For optimal performance with server-side thumbnail generation:
+
+```bash
+npm install -g supabase
+supabase login
+supabase link --project-ref YOUR_PROJECT_REF
+supabase functions deploy generate-thumbnail
+```
+
+> **📋 Full deployment guide**: See [EDGE_FUNCTION_DEPLOYMENT.md](./docs/EDGE_FUNCTION_DEPLOYMENT.md) for complete instructions.
+>
+> **Note**: The app works without this step, but thumbnails won't be generated. See [THUMBNAIL_ARCHITECTURE.md](./docs/THUMBNAIL_ARCHITECTURE.md) for details.
+
+### 5. Run the Development Server
 
 ```bash
 npm run dev
@@ -105,7 +122,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-> **📱 Testing on Mobile?** See [LOCAL_DEVELOPMENT.md](./LOCAL_DEVELOPMENT.md) for:
+> **📱 Testing on Mobile?** See [LOCAL_DEVELOPMENT.md](./docs/LOCAL_DEVELOPMENT.md) for:
 > - Using your local network IP (e.g., `http://192.168.1.100:3000`)
 > - Setting up custom HTTPS domain (e.g., `https://cam.local.yavik.dev`)
 > - Running the camera feature on mobile devices
@@ -194,13 +211,23 @@ disposable-camera/
 - `id` (UUID) - Primary key
 - `created_at` (timestamp) - Upload timestamp
 - `event_id` (UUID) - Foreign key to events
-- `file_path` (text) - Storage path
+- `file_path` (text) - Storage path for full-size image
 - `file_name` (text) - File name
+- `thumbnail_path` (text) - Storage path for WebP thumbnail
 - `uploaded_by` (text) - Optional guest name
 - `caption` (text) - Optional caption
 - `metadata` (jsonb) - Additional metadata
 
 ## Features in Detail
+
+### Server-Side Thumbnail Generation
+Photos are processed on the server to generate optimized WebP thumbnails (400px, ~70KB) for fast gallery loading. This provides:
+- **Faster uploads** - Users only upload the full image
+- **Better mobile performance** - No CPU-intensive processing on phone
+- **Reduced bandwidth** - Thumbnails load 10x faster than full images
+- **Automatic processing** - Happens in background after upload
+
+See [THUMBNAIL_ARCHITECTURE.md](./docs/THUMBNAIL_ARCHITECTURE.md) for technical details.
 
 ### Image Compression
 All uploaded images are automatically compressed to reduce bandwidth and storage usage while maintaining good quality.
@@ -240,12 +267,12 @@ After deployment, update your Supabase Storage CORS settings to allow your domai
 
 ## Troubleshooting
 
-> **For detailed troubleshooting, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)**
+> **For detailed troubleshooting, see [TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md)**
 
 ### Most Common Issues
 
 #### 🔴 Upload Error: "new row violates row-level security policy"
-**Solution**: You need to add Storage Policies. See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md#-upload-error-storageapierror-new-row-violates-row-level-security-policy) for detailed fix.
+**Solution**: You need to add Storage Policies. See [TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md#-upload-error-storageapierror-new-row-violates-row-level-security-policy) for detailed fix.
 
 #### Camera Not Working
 - Ensure you're using HTTPS (required for camera access)

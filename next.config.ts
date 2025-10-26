@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Allow requests from Nginx Proxy Manager domain
+  allowedDevOrigins: [
+    'cam.local.yavik.dev',
+    'https://cam.local.yavik.dev',
+  ],
 };
 
 export default nextConfig;
