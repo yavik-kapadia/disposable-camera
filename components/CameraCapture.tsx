@@ -428,24 +428,24 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
         </div>
       )}
 
-      {/* Camera Toolbar */}
+      {/* Camera Toolbar - iOS Native Style */}
       {cameraActive && (
-        <div className="mb-4 flex flex-wrap gap-2 justify-center">
+        <div className="mb-4 flex flex-wrap gap-3 justify-center px-4">
           {/* Grid Toggle */}
           <button
             onClick={() => setShowGrid(!showGrid)}
-            className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+            className={`px-5 py-3 rounded-xl font-semibold transition-all shadow-sm active:scale-95 min-h-[44px] ${
               showGrid
-                ? 'bg-orange-500 text-white'
-                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700'
+                ? 'bg-orange-500 text-white shadow-orange-200 dark:shadow-orange-900'
+                : 'bg-white/90 dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 ios-glass'
             }`}
             title="Toggle composition grid"
           >
             <span className="flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5h16M4 12h16M4 19h16" />
               </svg>
-              Grid
+              <span className="text-sm">Grid</span>
             </span>
           </button>
 
@@ -453,7 +453,7 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
           <select
             value={timer || ''}
             onChange={(e) => setTimer(e.target.value ? Number(e.target.value) : null)}
-            className="px-4 py-2 rounded-lg font-semibold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700"
+            className="px-5 py-3 rounded-xl font-semibold bg-white/90 dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-sm ios-glass min-h-[44px] text-sm"
             title="Set self-timer"
           >
             <option value="">⏱️ No Timer</option>
@@ -466,7 +466,7 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value as any)}
-            className="px-4 py-2 rounded-lg font-semibold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700"
+            className="px-5 py-3 rounded-xl font-semibold bg-white/90 dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-sm ios-glass min-h-[44px] text-sm"
             title="Apply filter"
           >
             <option value="none">🎨 No Filter</option>
