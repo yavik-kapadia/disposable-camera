@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import CameraCapture from '@/components/CameraCapture';
 import ManualUpload from '@/components/ManualUpload';
+import Head from 'next/head';
 
 interface Event {
   id: string;
@@ -22,9 +23,24 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
   const [mode, setMode] = useState<'camera' | 'upload'>('camera');
   const [uploadCount, setUploadCount] = useState(0);
   const [cameraStarted, setCameraStarted] = useState(false);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   useEffect(() => {
     fetchEvent();
+    
+    // Listen for PWA install prompt
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallPrompt(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
   }, [resolvedParams.code]);
 
   const fetchEvent = async () => {
@@ -57,6 +73,20 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
     setUploadCount((prev) => prev + 1);
   };
 
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+      console.log('PWA installed');
+    }
+    
+    setDeferredPrompt(null);
+    setShowInstallPrompt(false);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50 flex items-center justify-center">
@@ -83,8 +113,14 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50">
-      <div className="container mx-auto px-4 py-8">
+    <>
+      {/* Dynamic manifest for this event */}
+      <Head>
+        <link rel="manifest" href={`/camera/${resolvedParams.code}/manifest.json`} />
+      </Head>
+
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50">
+        <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">
@@ -108,6 +144,37 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
                   <div className="text-blue-800 dark:text-blue-200">
                     <strong>Note:</strong> Your photos will be uploaded to the event organizer's gallery. 
                     Only the event creator can view all submitted photos.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* PWA Install Prompt */}
+          {showInstallPrompt && (
+            <div className="mt-4 max-w-2xl mx-auto">
+              <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg p-4 text-white shadow-lg">
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl shrink-0">📱</span>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg mb-1">Install {event.name}</h3>
+                    <p className="text-sm text-white/90 mb-3">
+                      Add this camera to your home screen for quick access. Works offline!
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleInstallClick}
+                        className="px-4 py-2 bg-white text-orange-600 rounded-lg font-semibold text-sm hover:bg-orange-50 transition-colors"
+                      >
+                        Install App
+                      </button>
+                      <button
+                        onClick={() => setShowInstallPrompt(false)}
+                        className="px-4 py-2 bg-white/20 text-white rounded-lg font-semibold text-sm hover:bg-white/30 transition-colors"
+                      >
+                        Maybe Later
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -164,6 +231,7 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
