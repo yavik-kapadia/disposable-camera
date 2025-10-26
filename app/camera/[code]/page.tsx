@@ -58,7 +58,7 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50 flex items-center justify-center">
         <div className="text-xl">Loading event...</div>
       </div>
     );
@@ -66,13 +66,13 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
 
   if (error || !event) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50 flex items-center justify-center">
         <div className="text-center p-8">
           <div className="text-6xl mb-4">😞</div>
           <p className="text-xl text-red-600 mb-4">{error || 'Event not found'}</p>
           <button
             onClick={() => router.push('/')}
-            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold"
+            className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-semibold"
           >
             Go Home
           </button>
@@ -82,11 +82,11 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">
             {event.name}
           </h1>
           {event.description && (
@@ -106,7 +106,7 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
               onClick={() => setMode('camera')}
               className={`px-6 py-3 rounded-lg font-semibold transition-all ${
                 mode === 'camera'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                  ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white'
                   : 'text-gray-600 hover:text-gray-800'
               }`}
             >
@@ -116,7 +116,7 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
               onClick={() => setMode('upload')}
               className={`px-6 py-3 rounded-lg font-semibold transition-all ${
                 mode === 'upload'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                  ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white'
                   : 'text-gray-600 hover:text-gray-800'
               }`}
             >
@@ -138,7 +138,7 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
         <div className="text-center mt-8">
           <button
             onClick={() => router.push('/')}
-            className="text-purple-600 hover:text-purple-700 font-semibold"
+            className="text-orange-600 hover:text-orange-700 font-semibold"
           >
             ← Back to Home
           </button>

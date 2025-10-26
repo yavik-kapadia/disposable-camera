@@ -8,8 +8,20 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-cotham-sans);
+
+  /* Custom orange color palette */
+  --color-orange-50: oklch(0.959 0.02 32.59);
+  --color-orange-100: oklch(0.925 0.037 32.39);
+  --color-orange-200: oklch(0.853 0.08 36.06);
+  --color-orange-300: oklch(0.779 0.13 39.98);
+  --color-orange-400: oklch(0.705 0.187 47.6);
+  --color-orange-500: oklch(0.611 0.162 47.66);
+  --color-orange-600: oklch(0.514 0.136 47.74);
+  --color-orange-700: oklch(0.423 0.112 47.41);
+  --color-orange-800: oklch(0.327 0.087 46.89);
+  --color-orange-900: oklch(0.238 0.064 47.12);
+  --color-orange-950: oklch(0.182 0.048 49.98);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,5 +34,5 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-cotham-sans), system-ui, sans-serif;
 }

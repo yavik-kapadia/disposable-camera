@@ -152,7 +152,7 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50 flex items-center justify-center">
         <div className="text-xl">Loading...</div>
       </div>
     );
@@ -160,12 +160,12 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
 
   if (error || !event) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-xl text-red-600 mb-4">{error || 'Event not found'}</p>
           <button
             onClick={() => router.push('/')}
-            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+            className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
           >
             Go Home
           </button>
@@ -175,17 +175,17 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => router.push('/')}
-            className="text-purple-600 hover:text-purple-700 mb-4 flex items-center gap-2"
+            className="text-orange-600 hover:text-orange-700 mb-4 flex items-center gap-2"
           >
             ← Back to Home
           </button>
-          <h1 className="text-4xl font-bold mb-2">{event.name}</h1>
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">{event.name}</h1>
           {event.description && <p className="text-gray-600">{event.description}</p>}
           <p className="text-sm text-gray-500 mt-2">Created {formatDate(event.created_at)}</p>
         </div>
@@ -194,7 +194,7 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
           {/* QR Code and Access Info */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl shadow-xl p-6 sticky top-8">
-              <h2 className="text-xl font-bold mb-4">Event Access</h2>
+              <h2 className="text-xl font-bold text-gray-800 mb-4">Event Access</h2>
 
               {/* QR Code */}
               <div className="mb-6">
@@ -211,7 +211,7 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
                     type="text"
                     value={event.access_code}
                     readOnly
-                    className="flex-1 px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-center font-mono text-xl font-bold"
+                    className="flex-1 px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-center font-mono text-xl text-gray-500 font-bold"
                   />
                   <button
                     onClick={() => copyToClipboard(event.access_code)}
@@ -233,7 +233,7 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
                     type="text"
                     value={cameraUrl}
                     readOnly
-                    className="flex-1 px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-sm truncate"
+                    className="flex-1 px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-sm text-gray-500 truncate"
                   />
                   <button
                     onClick={() => copyToClipboard(cameraUrl)}
@@ -250,7 +250,7 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
                 <button
                   onClick={downloadAllImages}
                   disabled={downloading || images.length === 0}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-lg font-semibold hover:from-orange-700 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {downloading ? 'Downloading...' : `Download All (${images.length})`}
                 </button>
@@ -268,7 +268,7 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
 
               {/* Status */}
               <div className="mt-4 p-3 rounded-lg bg-gray-50">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-black-600">
                   Status:{' '}
                   <span
                     className={`font-semibold ${
@@ -285,12 +285,12 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
           {/* Image Gallery */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl shadow-xl p-6">
-              <h2 className="text-xl font-bold mb-4">
+              <h2 className="text-xl text-gray-800 font-bold mb-4">
                 Photos ({images.length})
               </h2>
 
               {images.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
+                <div className="text-center py-12 text-black-500">
                   <div className="text-6xl mb-4">📷</div>
                   <p>No photos yet!</p>
                   <p className="text-sm mt-2">Share the access code with guests to start collecting photos</p>
@@ -312,14 +312,51 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
 
 function ImageCard({ image }: { image: Image }) {
   const [imageUrl, setImageUrl] = useState<string>('');
+  const [imageError, setImageError] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data } = supabase.storage
-      .from('event-images')
-      .getPublicUrl(image.file_path);
-
-    setImageUrl(data.publicUrl);
+    loadImage();
   }, [image.file_path]);
+
+  const loadImage = async () => {
+    try {
+      console.log('[ImageCard] Loading image:', image.file_name);
+
+      // First try to get public URL
+      const { data } = supabase.storage
+        .from('event-images')
+        .getPublicUrl(image.file_path);
+
+      console.log('[ImageCard] Public URL generated:', data.publicUrl);
+
+      // Check if the public URL works
+      const response = await fetch(data.publicUrl, { method: 'HEAD' });
+      console.log('[ImageCard] HEAD request status:', response.status);
+
+      if (response.ok) {
+        console.log('[ImageCard] Setting public URL');
+        setImageUrl(data.publicUrl);
+        // Don't set loading to false here - let onLoad handle it
+      } else {
+        console.warn('[ImageCard] Public URL failed with status:', response.status, 'trying signed URL');
+        // Fallback to signed URL (24 hour expiry)
+        const { data: signedData, error: signedError } = await supabase.storage
+          .from('event-images')
+          .createSignedUrl(image.file_path, 86400); // 24 hours
+
+        if (signedError) throw signedError;
+        if (signedData) {
+          console.log('[ImageCard] Using signed URL:', signedData.signedUrl);
+          setImageUrl(signedData.signedUrl);
+        }
+      }
+    } catch (err) {
+      console.error('[ImageCard] Failed to load image:', err);
+      setImageError(true);
+      setLoading(false);
+    }
+  };
 
   const downloadImage = async () => {
     try {
@@ -337,24 +374,51 @@ function ImageCard({ image }: { image: Image }) {
   };
 
   return (
-    <div className="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
-      {imageUrl && (
+    <div className="group relative aspect-square bg-gray-800 rounded-lg overflow-hidden">
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-700">
+          <div className="text-black-200 text-center">
+            <div className="text-sm font-semibold">Loading...</div>
+            <div className="text-xs mt-1">{imageUrl ? 'URL set' : 'Fetching URL'}</div>
+          </div>
+        </div>
+      )}
+      {imageError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-700">
+          <div className="text-red-400 text-center p-4">
+            <div className="text-2xl mb-2">⚠️</div>
+            <div className="text-xs">Failed to load</div>
+          </div>
+        </div>
+      )}
+      {imageUrl && !imageError && (
         <img
           src={imageUrl}
           alt={image.file_name}
           className="w-full h-full object-cover"
+          onError={(e) => {
+            console.error('[ImageCard] <img> onError triggered for:', imageUrl);
+            console.error('[ImageCard] Image element:', e.currentTarget);
+            setImageError(true);
+            setLoading(false);
+          }}
+          onLoad={(e) => {
+            console.log('[ImageCard] <img> onLoad triggered successfully for:', image.file_name);
+            console.log('[ImageCard] Image dimensions:', e.currentTarget.naturalWidth, 'x', e.currentTarget.naturalHeight);
+            setLoading(false);
+          }}
         />
       )}
-      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity flex items-center justify-center">
+      <div className="absolute inset-0 bg-opacity-0 group-hover:bg-opacity-70 transition-opacity flex items-center justify-center pointer-events-none">
         <button
           onClick={downloadImage}
-          className="opacity-0 group-hover:opacity-100 px-4 py-2 bg-white text-black rounded-lg font-semibold transition-opacity"
+          className="opacity-0 bg-black group-hover:opacity-100 px-4 py-2 text-black-900 rounded-lg font-semibold transition-opacity pointer-events-auto shadow-lg"
         >
           Download
         </button>
       </div>
       {image.uploaded_by && (
-        <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-2">
+        <div className="absolute bottom-0 left-0 right-0 bg-opacity-70 text-white text-xs p-2">
           {image.uploaded_by}
         </div>
       )}
