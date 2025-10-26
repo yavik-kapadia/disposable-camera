@@ -39,16 +39,21 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
                            (window.navigator as any).standalone === true;
     setIsStandalone(isInStandalone);
     
-    // Update manifest link
+    // Update manifest link with cache busting
     const manifestLink = document.querySelector('link[rel="manifest"]');
+    const manifestUrl = `/camera/${resolvedParams.code}/manifest.json?v=${Date.now()}`;
     if (manifestLink) {
-      manifestLink.setAttribute('href', `/camera/${resolvedParams.code}/manifest.json`);
+      manifestLink.setAttribute('href', manifestUrl);
     } else {
       const link = document.createElement('link');
       link.rel = 'manifest';
-      link.href = `/camera/${resolvedParams.code}/manifest.json`;
+      link.href = manifestUrl;
       document.head.appendChild(link);
     }
+    
+    // Log for debugging
+    console.log('[PWA Debug] Manifest URL:', manifestUrl);
+    console.log('[PWA Debug] Current URL:', window.location.href);
     
     // Listen for PWA install prompt (Android Chrome/Edge)
     const handleBeforeInstallPrompt = (e: any) => {
