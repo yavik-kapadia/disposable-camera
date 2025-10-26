@@ -26,6 +26,9 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [filter, setFilter] = useState<'none' | 'bw' | 'sepia' | 'vintage'>('none');
   const [switching, setSwitching] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const startCamera = async () => {
     try {
@@ -89,6 +92,89 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
       stopCamera();
     };
   }, []);
+
+  // Fullscreen change listener
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  // Pinch to zoom for mobile
+  useEffect(() => {
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
+
+    let initialDistance = 0;
+    let initialZoom = 1;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        initialDistance = Math.hypot(
+          touch2.clientX - touch1.clientX,
+          touch2.clientY - touch1.clientY
+        );
+        initialZoom = zoom;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const currentDistance = Math.hypot(
+          touch2.clientX - touch1.clientX,
+          touch2.clientY - touch1.clientY
+        );
+        const scale = currentDistance / initialDistance;
+        const newZoom = Math.min(Math.max(initialZoom * scale, 1), 3);
+        setZoom(newZoom);
+      }
+    };
+
+    videoElement.addEventListener('touchstart', handleTouchStart, { passive: false });
+    videoElement.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    return () => {
+      videoElement.removeEventListener('touchstart', handleTouchStart);
+      videoElement.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, [zoom]);
+
+  const toggleFullscreen = async () => {
+    if (!containerRef.current) return;
+
+    try {
+      if (!document.fullscreenElement) {
+        await containerRef.current.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (err) {
+      console.error('Fullscreen error:', err);
+    }
+  };
+
+  const handleZoomIn = () => {
+    setZoom(prev => Math.min(prev + 0.5, 3));
+  };
+
+  const handleZoomOut = () => {
+    setZoom(prev => Math.max(prev - 0.5, 1));
+  };
+
+  const resetZoom = () => {
+    setZoom(1);
+  };
 
   // Timer countdown effect
   useEffect(() => {
@@ -331,7 +417,12 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
         </div>
       )}
 
-      <div className="relative bg-black rounded-2xl overflow-hidden shadow-2xl aspect-4/3">
+      <div 
+        ref={containerRef}
+        className={`relative bg-black overflow-hidden shadow-2xl transition-all ${
+          isFullscreen ? 'fixed inset-0 z-50 rounded-none' : 'rounded-2xl aspect-4/3'
+        }`}
+      >
         <video
           ref={videoRef}
           autoPlay
@@ -342,7 +433,9 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
             filter: filter === 'bw' ? 'grayscale(100%)' : 
                    filter === 'sepia' ? 'sepia(100%)' : 
                    filter === 'vintage' ? 'saturate(80%) sepia(20%) hue-rotate(-10deg)' : 
-                   'none'
+                   'none',
+            transform: `scale(${zoom})`,
+            transition: 'transform 0.2s ease-out'
           }}
         />
         <canvas ref={canvasRef} className="hidden" />
@@ -352,6 +445,69 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
           <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm font-semibold">
             📸 {photoCount}
           </div>
+        )}
+
+        {/* Zoom Level Indicator */}
+        {cameraActive && zoom > 1 && (
+          <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm font-semibold">
+            {zoom.toFixed(1)}×
+          </div>
+        )}
+
+        {/* Zoom Controls - Side Panel */}
+        {cameraActive && (
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2">
+            <button
+              onClick={handleZoomIn}
+              disabled={zoom >= 3}
+              className="p-2 bg-black/70 hover:bg-black/90 rounded-full backdrop-blur-sm disabled:opacity-30 transition-all"
+              title="Zoom in"
+            >
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+            <button
+              onClick={handleZoomOut}
+              disabled={zoom <= 1}
+              className="p-2 bg-black/70 hover:bg-black/90 rounded-full backdrop-blur-sm disabled:opacity-30 transition-all"
+              title="Zoom out"
+            >
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+              </svg>
+            </button>
+            {zoom > 1 && (
+              <button
+                onClick={resetZoom}
+                className="p-2 bg-black/70 hover:bg-black/90 rounded-full backdrop-blur-sm transition-all"
+                title="Reset zoom"
+              >
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Fullscreen Toggle */}
+        {cameraActive && (
+          <button
+            onClick={toggleFullscreen}
+            className="absolute top-4 left-1/2 -translate-x-1/2 p-2 bg-black/70 hover:bg-black/90 rounded-full backdrop-blur-sm transition-all"
+            title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          >
+            {isFullscreen ? (
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+              </svg>
+            )}
+          </button>
         )}
 
         {/* Grid Overlay */}
@@ -485,9 +641,16 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
         )}
       </div>
 
-      <p className="text-sm text-gray-600 mt-4 text-center">
+      <p className="text-sm text-gray-600 dark:text-gray-400 mt-4 text-center">
         {!error ? (
-          'Photos are automatically saved to your device and uploaded to the event'
+          <>
+            Photos are automatically saved to your device and uploaded to the event
+            {cameraActive && (
+              <span className="block mt-1 text-xs text-gray-500 dark:text-gray-500">
+                💡 Pinch to zoom on mobile • Use zoom buttons • Click fullscreen for immersive mode
+              </span>
+            )}
+          </>
         ) : (
           'Having camera issues? Switch to the Upload tab to select photos from your gallery'
         )}
