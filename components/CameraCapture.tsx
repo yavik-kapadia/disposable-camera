@@ -267,24 +267,10 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
       const newOrientation = isLandscape ? 'landscape' : 'portrait';
       setOrientation(newOrientation);
       
-      // iOS Safari doesn't support screen.orientation.angle properly
-      // Mobile cameras on iOS capture in fixed orientation
-      // We need to rotate the video feed to match device orientation
+      // Don't rotate - let iOS handle camera orientation naturally
+      setRotation(0);
       
-      let videoRotation = 0;
-      
-      if (newOrientation === 'portrait') {
-        // Portrait mode: rotate video counter-clockwise to display upright
-        // Back camera needs -90°, front camera needs 90°
-        videoRotation = facingMode === 'environment' ? -90 : 90;
-      } else {
-        // Landscape mode: no rotation needed
-        videoRotation = 0;
-      }
-      
-      setRotation(videoRotation);
-      
-      console.log('[Camera] Orientation:', newOrientation, 'FacingMode:', facingMode, 'Video Rotation:', videoRotation);
+      console.log('[Camera] Orientation:', newOrientation, 'FacingMode:', facingMode);
     };
 
     // Initial orientation
@@ -320,8 +306,8 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
             const mediaStream = await navigator.mediaDevices.getUserMedia({
               video: {
                 facingMode: facingMode,
-                width: { ideal: orientation === 'landscape' ? 1920 : 1080 },
-                height: { ideal: orientation === 'landscape' ? 1080 : 1920 }
+                width: { ideal: 1920 },
+                height: { ideal: 1080 }
               },
             });
 
@@ -575,10 +561,10 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
       <div
         ref={containerRef}
         className={`relative bg-black overflow-hidden shadow-2xl transition-all ${
-          isFullscreen ? 'fixed inset-0 z-50 rounded-none' : 'rounded-2xl'
+          isFullscreen ? 'fixed inset-0 z-50 rounded-none' : 'rounded-2xl w-full max-w-4xl mx-auto'
         }`}
         style={{
-          aspectRatio: isFullscreen ? 'auto' : (orientation === 'landscape' ? '16/9' : '3/4')
+          aspectRatio: isFullscreen ? 'auto' : '4/3'
         }}
       >
         <video
@@ -586,20 +572,14 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
           autoPlay
           playsInline
           muted
-          className="w-full h-full"
+          className="w-full h-full object-cover"
           style={{
             filter: filter === 'bw' ? 'grayscale(100%)' : 
                    filter === 'sepia' ? 'sepia(100%)' : 
                    filter === 'vintage' ? 'saturate(80%) sepia(20%) hue-rotate(-10deg)' : 
                    'none',
-            transform: `rotate(${rotation}deg) scale(${zoom})`,
-            transformOrigin: 'center center',
-            transition: 'transform 0.3s ease-out',
-            objectFit: 'cover',
-            width: rotation !== 0 ? '100vh' : '100%',
-            height: rotation !== 0 ? '100vw' : '100%',
-            maxWidth: rotation !== 0 ? 'none' : '100%',
-            maxHeight: rotation !== 0 ? 'none' : '100%'
+            transform: `scale(${zoom})`,
+            transition: 'transform 0.2s ease-out'
           }}
         />
         <canvas ref={canvasRef} className="hidden" />
