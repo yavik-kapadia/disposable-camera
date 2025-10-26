@@ -267,60 +267,34 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
       const newOrientation = isLandscape ? 'landscape' : 'portrait';
       setOrientation(newOrientation);
       
-      // Don't rotate - let iOS handle camera orientation naturally
-      setRotation(0);
+      // Calculate rotation to keep video "right-side-up"
+      // iOS cameras capture in landscape by default
+      let videoRotation = 0;
       
-      console.log('[Camera] Orientation:', newOrientation, 'FacingMode:', facingMode);
+      if (newOrientation === 'portrait') {
+        // In portrait mode, rotate the video to appear upright
+        videoRotation = facingMode === 'environment' ? 90 : -90;
+      } else {
+        // In landscape mode, no rotation needed
+        videoRotation = 0;
+      }
+      
+      setRotation(videoRotation);
+      
+      console.log('[Camera] Orientation:', newOrientation, 'FacingMode:', facingMode, 'Rotation:', videoRotation);
     };
 
     // Initial orientation
     updateOrientation();
 
-    if (!cameraActive) {
-      // Still listen to orientation even if camera is off
-      window.addEventListener('resize', updateOrientation);
-      return () => {
-        window.removeEventListener('resize', updateOrientation);
-      };
-    }
-
     let debounceTimer: NodeJS.Timeout;
 
     const handleOrientationChange = () => {
-      // Update orientation immediately
-      updateOrientation();
-      
-      // Debounce camera restart to avoid rapid restarts
+      // Update orientation and rotation immediately (instant, no camera restart)
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(async () => {
-        console.log('[Camera] Restarting camera for new orientation...');
-        
-        // Stop current stream
-        if (stream) {
-          stream.getTracks().forEach((track) => track.stop());
-        }
-
-        // Small delay to allow orientation to settle
-        setTimeout(async () => {
-          try {
-            const mediaStream = await navigator.mediaDevices.getUserMedia({
-              video: {
-                facingMode: facingMode,
-                width: { ideal: 1920 },
-                height: { ideal: 1080 }
-              },
-            });
-
-            if (videoRef.current) {
-              videoRef.current.srcObject = mediaStream;
-              setStream(mediaStream);
-              console.log('[Camera] Camera restarted successfully');
-            }
-          } catch (err) {
-            console.error('[Camera] Failed to restart camera:', err);
-          }
-        }, 300);
-      }, 300);
+      debounceTimer = setTimeout(() => {
+        updateOrientation();
+      }, 50); // Very short debounce just to avoid duplicate events
     };
 
     // Listen to both orientationchange and resize (resize is more reliable)
@@ -578,8 +552,9 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
                    filter === 'sepia' ? 'sepia(100%)' : 
                    filter === 'vintage' ? 'saturate(80%) sepia(20%) hue-rotate(-10deg)' : 
                    'none',
-            transform: `scale(${zoom})`,
-            transition: 'transform 0.2s ease-out'
+            transform: `rotate(${rotation}deg) scale(${zoom})`,
+            transformOrigin: 'center center',
+            transition: 'transform 0.3s ease-out'
           }}
         />
         <canvas ref={canvasRef} className="hidden" />
