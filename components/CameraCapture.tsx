@@ -19,6 +19,12 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
   const [uploadQueue, setUploadQueue] = useState(0); // Track number of uploads in progress
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
   const [error, setError] = useState('');
+  const [photoCount, setPhotoCount] = useState(0);
+  const [showGrid, setShowGrid] = useState(false);
+  const [timer, setTimer] = useState<number | null>(null);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'none' | 'bw' | 'sepia' | 'vintage'>('none');
 
   const startCamera = async () => {
     try {
@@ -76,7 +82,24 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
     };
   }, []);
 
-  const capturePhoto = async () => {
+  // Timer countdown effect
+  useEffect(() => {
+    if (countdown === null) return;
+    
+    if (countdown === 0) {
+      setCountdown(null);
+      executeCapturePhoto();
+      return;
+    }
+    
+    const timeout = setTimeout(() => {
+      setCountdown(countdown - 1);
+    }, 1000);
+    
+    return () => clearTimeout(timeout);
+  }, [countdown]);
+
+  const executeCapturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current) return;
 
     setCapturing(true);
@@ -93,6 +116,33 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
     // Draw video frame to canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
+    // Apply filter
+    if (filter !== 'none') {
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        
+        if (filter === 'bw') {
+          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+          data[i] = data[i + 1] = data[i + 2] = gray;
+        } else if (filter === 'sepia') {
+          data[i] = Math.min(255, r * 0.393 + g * 0.769 + b * 0.189);
+          data[i + 1] = Math.min(255, r * 0.349 + g * 0.686 + b * 0.168);
+          data[i + 2] = Math.min(255, r * 0.272 + g * 0.534 + b * 0.131);
+        } else if (filter === 'vintage') {
+          data[i] = Math.min(255, r * 1.1);
+          data[i + 1] = Math.min(255, g * 0.9);
+          data[i + 2] = Math.min(255, b * 0.7);
+        }
+      }
+      
+      context.putImageData(imageData, 0, 0);
+    }
+
     // Convert to blob
     canvas.toBlob(async (blob) => {
       if (!blob) {
@@ -108,9 +158,22 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
       document.body.appendChild(flashDiv);
       setTimeout(() => document.body.removeChild(flashDiv), 200);
 
+      // Show preview
+      const previewUrl = URL.createObjectURL(blob);
+      setPreviewImage(previewUrl);
+      
+      // Increment photo count
+      setPhotoCount(prev => prev + 1);
+      
       // Allow user to take another photo immediately
       setCapturing(false);
       setUploading(false);
+      
+      // Auto-hide preview after 2 seconds
+      setTimeout(() => {
+        setPreviewImage(null);
+        URL.revokeObjectURL(previewUrl);
+      }, 2000);
 
       // Upload in background (non-blocking)
       setUploadQueue(prev => prev + 1);
@@ -187,6 +250,14 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
     }, 'image/jpeg', 0.9);
   };
 
+  const capturePhoto = () => {
+    if (timer) {
+      setCountdown(timer);
+    } else {
+      executeCapturePhoto();
+    }
+  };
+
   return (
     <div className="w-full max-w-2xl mx-auto">
       {error && (
@@ -203,18 +274,115 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
         </div>
       )}
 
-      <div className="relative bg-black rounded-2xl overflow-hidden shadow-2xl aspect-[4/3]">
+      {/* Camera Toolbar */}
+      {cameraActive && (
+        <div className="mb-4 flex flex-wrap gap-2 justify-center">
+          {/* Grid Toggle */}
+          <button
+            onClick={() => setShowGrid(!showGrid)}
+            className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+              showGrid
+                ? 'bg-orange-500 text-white'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700'
+            }`}
+            title="Toggle composition grid"
+          >
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5h16M4 12h16M4 19h16" />
+              </svg>
+              Grid
+            </span>
+          </button>
+
+          {/* Timer Selection */}
+          <select
+            value={timer || ''}
+            onChange={(e) => setTimer(e.target.value ? Number(e.target.value) : null)}
+            className="px-4 py-2 rounded-lg font-semibold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700"
+            title="Set self-timer"
+          >
+            <option value="">⏱️ No Timer</option>
+            <option value="3">⏱️ 3s</option>
+            <option value="5">⏱️ 5s</option>
+            <option value="10">⏱️ 10s</option>
+          </select>
+
+          {/* Filter Selection */}
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value as any)}
+            className="px-4 py-2 rounded-lg font-semibold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700"
+            title="Apply filter"
+          >
+            <option value="none">🎨 No Filter</option>
+            <option value="bw">⬛ Black & White</option>
+            <option value="sepia">📜 Sepia</option>
+            <option value="vintage">📸 Vintage</option>
+          </select>
+        </div>
+      )}
+
+      <div className="relative bg-black rounded-2xl overflow-hidden shadow-2xl aspect-4/3">
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
           className="w-full h-full object-cover"
+          style={{
+            filter: filter === 'bw' ? 'grayscale(100%)' : 
+                   filter === 'sepia' ? 'sepia(100%)' : 
+                   filter === 'vintage' ? 'saturate(80%) sepia(20%) hue-rotate(-10deg)' : 
+                   'none'
+          }}
         />
         <canvas ref={canvasRef} className="hidden" />
 
+        {/* Photo Counter */}
+        {cameraActive && photoCount > 0 && (
+          <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm font-semibold">
+            📸 {photoCount}
+          </div>
+        )}
+
+        {/* Grid Overlay */}
+        {showGrid && cameraActive && (
+          <div className="absolute inset-0 pointer-events-none">
+            <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <line x1="33.33" y1="0" x2="33.33" y2="100" stroke="white" strokeWidth="0.3" opacity="0.5" />
+              <line x1="66.66" y1="0" x2="66.66" y2="100" stroke="white" strokeWidth="0.3" opacity="0.5" />
+              <line x1="0" y1="33.33" x2="100" y2="33.33" stroke="white" strokeWidth="0.3" opacity="0.5" />
+              <line x1="0" y1="66.66" x2="100" y2="66.66" stroke="white" strokeWidth="0.3" opacity="0.5" />
+            </svg>
+          </div>
+        )}
+
+        {/* Countdown Overlay */}
+        {countdown !== null && (
+          <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-10">
+            <div className="text-white text-9xl font-bold animate-pulse">
+              {countdown}
+            </div>
+          </div>
+        )}
+
+        {/* Preview Image Overlay */}
+        {previewImage && (
+          <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-10">
+            <img 
+              src={previewImage} 
+              alt="Preview" 
+              className="max-w-full max-h-full object-contain"
+            />
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-full text-sm font-semibold">
+              ✓ Photo captured!
+            </div>
+          </div>
+        )}
+
         {/* Camera Controls Overlay */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/70 to-transparent">
+        <div className="absolute bottom-0 left-0 right-0 p-6 bg-linear-to-t from-black/70 to-transparent">
           <div className="flex items-center justify-between">
             {/* Switch Camera */}
             <button
