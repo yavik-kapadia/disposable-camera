@@ -97,6 +97,19 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
               {uploadCount} photo{uploadCount > 1 ? 's' : ''} uploaded! 🎉
             </div>
           )}
+          
+          {/* Privacy Notice */}
+          <div className="mt-4 max-w-2xl mx-auto">
+            <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm">
+              <div className="flex items-start gap-3">
+                <span className="text-blue-500 text-xl shrink-0">ℹ️</span>
+                <div className="text-blue-800 dark:text-blue-200">
+                  <strong>Note:</strong> Your photos will be uploaded to the event organizer's gallery. 
+                  Only the event creator can view all submitted photos.
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Mode Toggle */}

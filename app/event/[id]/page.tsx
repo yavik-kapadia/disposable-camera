@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import QRCodeGenerator from '@/components/QRCodeGenerator';
 import JSZip from 'jszip';
 import { downloadFile, formatDate } from '@/utils/helpers';
@@ -29,6 +30,7 @@ interface Image {
 export default function EventDashboard({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [event, setEvent] = useState<Event | null>(null);
   const [images, setImages] = useState<Image[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +41,9 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
   const cameraUrl = event ? `${appUrl}/camera/${event.access_code}` : '';
 
   useEffect(() => {
-    fetchEventData();
+    if (!authLoading) {
+      fetchEventData();
+    }
 
     // Set up real-time subscription for new images
     const channel = supabase
@@ -61,10 +65,20 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [resolvedParams.id]);
+  }, [resolvedParams.id, authLoading, user]);
 
   const fetchEventData = async () => {
     try {
+      // Check if user is authenticated
+      if (!authLoading && !user) {
+        setError('You must be signed in to view event details');
+        setLoading(false);
+        return;
+      }
+
+      if (authLoading) {
+        return; // Wait for auth to load
+      }
       // Fetch event details
       const { data: eventData, error: eventError } = await supabase
         .from('events')
@@ -73,6 +87,14 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
         .single();
 
       if (eventError) throw eventError;
+      
+      // Verify user is the event creator
+      if (eventData.creator_id !== user?.id) {
+        setError('You do not have permission to view this event. Only the event creator can access event photos.');
+        setLoading(false);
+        return;
+      }
+      
       setEvent(eventData);
 
       // Fetch images
