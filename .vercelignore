@@ -1,0 +1,10 @@
+# Supabase Edge Functions (deployed separately)
+supabase/functions/
+
+# Temporary files
+supabase/.temp/
+
+# Local development files
+Caddyfile
+.DS_Store
+
