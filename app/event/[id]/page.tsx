@@ -45,7 +45,7 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
       fetchEventData();
     }
 
-    // Set up real-time subscription for new images
+    // Set up real-time subscription for new images and deletions
     const channel = supabase
       .channel('images-changes')
       .on(
@@ -58,6 +58,18 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
         },
         (payload) => {
           setImages((prev) => [payload.new as Image, ...prev]);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'images',
+          filter: `event_id=eq.${resolvedParams.id}`,
+        },
+        (payload) => {
+          setImages((prev) => prev.filter((img) => img.id !== (payload.old as Image).id));
         }
       )
       .subscribe();
@@ -171,6 +183,45 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     alert('Copied to clipboard!');
+  };
+
+  const deleteImage = async (image: Image) => {
+    if (!confirm(`Delete ${image.file_name}? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      // Delete from storage (both full image and thumbnail)
+      const filesToDelete = [image.file_path];
+      if (image.thumbnail_path) {
+        filesToDelete.push(image.thumbnail_path);
+      }
+
+      const { error: storageError } = await supabase.storage
+        .from('event-images')
+        .remove(filesToDelete);
+
+      if (storageError) {
+        console.error('Storage deletion error:', storageError);
+        throw storageError;
+      }
+
+      // Delete from database
+      const { error: dbError } = await supabase
+        .from('images')
+        .delete()
+        .eq('id', image.id);
+
+      if (dbError) throw dbError;
+
+      // Update local state (real-time subscription will also update, but this is instant)
+      setImages((prev) => prev.filter((img) => img.id !== image.id));
+
+      console.log('[Delete] Successfully deleted:', image.file_name);
+    } catch (err) {
+      console.error('[Delete] Failed to delete image:', err);
+      alert('Failed to delete image. Please try again.');
+    }
   };
 
   if (loading) {
@@ -321,7 +372,7 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {images.map((image) => (
-                    <ImageCard key={image.id} image={image} />
+                    <ImageCard key={image.id} image={image} onDelete={deleteImage} />
                   ))}
                 </div>
               )}
@@ -333,7 +384,7 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
   );
 }
 
-function ImageCard({ image }: { image: Image }) {
+function ImageCard({ image, onDelete }: { image: Image; onDelete: (image: Image) => void }) {
   const [imageUrl, setImageUrl] = useState<string>('');
   const [imageError, setImageError] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -436,12 +487,23 @@ function ImageCard({ image }: { image: Image }) {
           }}
         />
       )}
-      <div className="absolute inset-0 bg-opacity-0 group-hover:bg-opacity-70 transition-opacity flex items-center justify-center pointer-events-none">
+      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-70 transition-opacity flex items-center justify-center gap-2 pointer-events-none">
         <button
           onClick={downloadImage}
-          className="opacity-0 bg-black group-hover:opacity-100 px-4 py-2 text-black-900 rounded-lg font-semibold transition-opacity pointer-events-auto shadow-lg"
+          className="opacity-0 group-hover:opacity-100 px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg font-semibold transition-opacity pointer-events-auto shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+          title="Download image"
         >
-          Download
+          ⬇️ Download
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(image);
+          }}
+          className="opacity-0 group-hover:opacity-100 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-opacity pointer-events-auto shadow-lg"
+          title="Delete image"
+        >
+          🗑️ Delete
         </button>
       </div>
       {image.uploaded_by && (
