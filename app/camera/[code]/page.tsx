@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import CameraCapture from '@/components/CameraCapture';
 import ManualUpload from '@/components/ManualUpload';
-import Head from 'next/head';
 
 interface Event {
   id: string;
@@ -25,11 +24,33 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
   const [cameraStarted, setCameraStarted] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
     fetchEvent();
     
-    // Listen for PWA install prompt
+    // Detect iOS
+    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    setIsIOS(isIOSDevice);
+    
+    // Check if already installed (standalone mode)
+    const isInStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                           (window.navigator as any).standalone === true;
+    setIsStandalone(isInStandalone);
+    
+    // Update manifest link
+    const manifestLink = document.querySelector('link[rel="manifest"]');
+    if (manifestLink) {
+      manifestLink.setAttribute('href', `/camera/${resolvedParams.code}/manifest.json`);
+    } else {
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = `/camera/${resolvedParams.code}/manifest.json`;
+      document.head.appendChild(link);
+    }
+    
+    // Listen for PWA install prompt (Android Chrome/Edge)
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -37,6 +58,13 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    
+    // Show iOS prompt after a delay if not installed
+    if (isIOSDevice && !isInStandalone) {
+      setTimeout(() => {
+        setShowInstallPrompt(true);
+      }, 2000);
+    }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -113,13 +141,7 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
   }
 
   return (
-    <>
-      {/* Dynamic manifest for this event */}
-      <Head>
-        <link rel="manifest" href={`/camera/${resolvedParams.code}/manifest.json`} />
-      </Head>
-
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50">
         <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
@@ -151,7 +173,7 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
           )}
 
           {/* PWA Install Prompt */}
-          {showInstallPrompt && (
+          {showInstallPrompt && !isStandalone && (
             <div className="mt-4 max-w-2xl mx-auto">
               <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg p-4 text-white shadow-lg">
                 <div className="flex items-start gap-3">
@@ -161,20 +183,57 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
                     <p className="text-sm text-white/90 mb-3">
                       Add this camera to your home screen for quick access. Works offline!
                     </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleInstallClick}
-                        className="px-4 py-2 bg-white text-orange-600 rounded-lg font-semibold text-sm hover:bg-orange-50 transition-colors"
-                      >
-                        Install App
-                      </button>
-                      <button
-                        onClick={() => setShowInstallPrompt(false)}
-                        className="px-4 py-2 bg-white/20 text-white rounded-lg font-semibold text-sm hover:bg-white/30 transition-colors"
-                      >
-                        Maybe Later
-                      </button>
-                    </div>
+                    
+                    {isIOS ? (
+                      /* iOS Instructions */
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="text-2xl">1️⃣</span>
+                          <span>Tap the <strong>Share</strong> button <svg className="inline w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M16 5l-1.42 1.42-1.59-1.59V16h-2V4.83L9.42 6.42 8 5l4-4 4 4zm4 14H4v-8h2v6h12v-6h2v8z"/></svg></span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="text-2xl">2️⃣</span>
+                          <span>Tap <strong>"Add to Home Screen"</strong></span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="text-2xl">3️⃣</span>
+                          <span>Tap <strong>"Add"</strong></span>
+                        </div>
+                        <button
+                          onClick={() => setShowInstallPrompt(false)}
+                          className="mt-3 px-4 py-2 bg-white/20 text-white rounded-lg font-semibold text-sm hover:bg-white/30 transition-colors w-full"
+                        >
+                          Got it!
+                        </button>
+                      </div>
+                    ) : deferredPrompt ? (
+                      /* Android/Chrome Install Button */
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleInstallClick}
+                          className="px-4 py-2 bg-white text-orange-600 rounded-lg font-semibold text-sm hover:bg-orange-50 transition-colors"
+                        >
+                          Install App
+                        </button>
+                        <button
+                          onClick={() => setShowInstallPrompt(false)}
+                          className="px-4 py-2 bg-white/20 text-white rounded-lg font-semibold text-sm hover:bg-white/30 transition-colors"
+                        >
+                          Maybe Later
+                        </button>
+                      </div>
+                    ) : (
+                      /* Fallback for other browsers */
+                      <div className="text-sm">
+                        <p className="mb-2">To install, look for the "Install" or "Add to Home Screen" option in your browser menu.</p>
+                        <button
+                          onClick={() => setShowInstallPrompt(false)}
+                          className="px-4 py-2 bg-white/20 text-white rounded-lg font-semibold text-sm hover:bg-white/30 transition-colors"
+                        >
+                          Got it!
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -231,7 +290,6 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
           </button>
         </div>
       </div>
-      </div>
-    </>
+    </div>
   );
 }
