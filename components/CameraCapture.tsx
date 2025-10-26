@@ -25,6 +25,7 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
   const [countdown, setCountdown] = useState<number | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [filter, setFilter] = useState<'none' | 'bw' | 'sepia' | 'vintage'>('none');
+  const [switching, setSwitching] = useState(false);
 
   const startCamera = async () => {
     try {
@@ -64,16 +65,23 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
   };
 
   const switchCamera = async () => {
+    const wasActive = cameraActive; // Remember if camera was active
+    setSwitching(true);
     stopCamera();
-    setFacingMode(facingMode === 'user' ? 'environment' : 'user');
-  };
-
-  useEffect(() => {
-    // Only auto-start camera when switching cameras, not on initial mount
-    if (cameraActive && facingMode) {
-      startCamera();
+    const newFacingMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(newFacingMode);
+    
+    // If camera was active, restart it with the new facing mode
+    if (wasActive) {
+      // Small delay to ensure old stream is fully stopped
+      setTimeout(async () => {
+        await startCamera();
+        setSwitching(false);
+      }, 100);
+    } else {
+      setSwitching(false);
     }
-  }, [facingMode]);
+  };
 
   useEffect(() => {
     // Cleanup on unmount
@@ -381,13 +389,21 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
           </div>
         )}
 
+        {/* Switching Camera Overlay */}
+        {switching && (
+          <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10 gap-4">
+            <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+            <div className="text-white text-lg font-semibold">Switching camera...</div>
+          </div>
+        )}
+
         {/* Camera Controls Overlay */}
         <div className="absolute bottom-0 left-0 right-0 p-6 bg-linear-to-t from-black/70 to-transparent">
           <div className="flex items-center justify-between">
             {/* Switch Camera */}
             <button
               onClick={switchCamera}
-              disabled={!cameraActive}
+              disabled={!cameraActive || switching}
               className="p-3 bg-white/20 hover:bg-white/30 rounded-full backdrop-blur-sm disabled:opacity-50 transition-all"
               title="Switch camera"
             >
