@@ -257,6 +257,55 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
     return () => clearTimeout(timeout);
   }, [countdown]);
 
+  // Handle orientation changes
+  useEffect(() => {
+    if (!cameraActive) return;
+
+    let debounceTimer: NodeJS.Timeout;
+
+    const handleOrientationChange = () => {
+      // Debounce to avoid rapid restarts
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(async () => {
+        console.log('[Camera] Orientation changed, restarting camera...');
+        
+        // Stop current stream
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+
+        // Small delay to allow orientation to settle
+        setTimeout(async () => {
+          try {
+            const mediaStream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                facingMode: facingMode,
+              },
+            });
+
+            if (videoRef.current) {
+              videoRef.current.srcObject = mediaStream;
+              setStream(mediaStream);
+              console.log('[Camera] Camera restarted successfully');
+            }
+          } catch (err) {
+            console.error('[Camera] Failed to restart camera:', err);
+          }
+        }, 300);
+      }, 300);
+    };
+
+    // Listen to both orientationchange and resize (resize is more reliable)
+    window.addEventListener('orientationchange', handleOrientationChange);
+    window.addEventListener('resize', handleOrientationChange);
+
+    return () => {
+      clearTimeout(debounceTimer);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      window.removeEventListener('resize', handleOrientationChange);
+    };
+  }, [cameraActive, facingMode, stream]);
+
   const executeCapturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current) return;
 
