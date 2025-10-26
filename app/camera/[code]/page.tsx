@@ -90,6 +90,43 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
       }
 
       setEvent(eventData);
+      
+      // Update page title and meta tags for iOS
+      document.title = `${eventData.name} - Camera`;
+      
+      // Update or create apple-mobile-web-app-title meta tag
+      let appleTitleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+      if (appleTitleMeta) {
+        appleTitleMeta.setAttribute('content', eventData.name);
+      } else {
+        appleTitleMeta = document.createElement('meta');
+        appleTitleMeta.setAttribute('name', 'apple-mobile-web-app-title');
+        appleTitleMeta.setAttribute('content', eventData.name);
+        document.head.appendChild(appleTitleMeta);
+      }
+      
+      // Update application-name meta tag
+      let appNameMeta = document.querySelector('meta[name="application-name"]');
+      if (appNameMeta) {
+        appNameMeta.setAttribute('content', eventData.name);
+      } else {
+        appNameMeta = document.createElement('meta');
+        appNameMeta.setAttribute('name', 'application-name');
+        appNameMeta.setAttribute('content', eventData.name);
+        document.head.appendChild(appNameMeta);
+      }
+      
+      // Update theme-color meta tag
+      let themeColorMeta = document.querySelector('meta[name="theme-color"]');
+      if (themeColorMeta) {
+        themeColorMeta.setAttribute('content', '#f97316');
+      } else {
+        themeColorMeta = document.createElement('meta');
+        themeColorMeta.setAttribute('name', 'theme-color');
+        themeColorMeta.setAttribute('content', '#f97316');
+        document.head.appendChild(themeColorMeta);
+      }
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load event');
     } finally {
