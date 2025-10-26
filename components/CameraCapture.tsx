@@ -7,9 +7,10 @@ import { compressImage, generateThumbnail } from '@/utils/helpers';
 interface CameraCaptureProps {
   eventId: string;
   onUploadSuccess?: () => void;
+  onCameraStart?: () => void;
 }
 
-export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptureProps) {
+export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart }: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -50,6 +51,11 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
         videoRef.current.srcObject = mediaStream;
         setStream(mediaStream);
         setCameraActive(true);
+        
+        // Notify parent that camera has started
+        if (onCameraStart) {
+          onCameraStart();
+        }
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to access camera';

@@ -21,6 +21,7 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
   const [error, setError] = useState('');
   const [mode, setMode] = useState<'camera' | 'upload'>('camera');
   const [uploadCount, setUploadCount] = useState(0);
+  const [cameraStarted, setCameraStarted] = useState(false);
 
   useEffect(() => {
     fetchEvent();
@@ -98,18 +99,20 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
             </div>
           )}
           
-          {/* Privacy Notice */}
-          <div className="mt-4 max-w-2xl mx-auto">
-            <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm">
-              <div className="flex items-start gap-3">
-                <span className="text-blue-500 text-xl shrink-0">ℹ️</span>
-                <div className="text-blue-800 dark:text-blue-200">
-                  <strong>Note:</strong> Your photos will be uploaded to the event organizer's gallery. 
-                  Only the event creator can view all submitted photos.
+          {/* Privacy Notice - Hide when camera is started */}
+          {!cameraStarted && (
+            <div className="mt-4 max-w-2xl mx-auto">
+              <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-blue-500 text-xl shrink-0">ℹ️</span>
+                  <div className="text-blue-800 dark:text-blue-200">
+                    <strong>Note:</strong> Your photos will be uploaded to the event organizer's gallery. 
+                    Only the event creator can view all submitted photos.
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Mode Toggle */}
@@ -141,7 +144,11 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
         {/* Content */}
         <div className="max-w-4xl mx-auto">
           {mode === 'camera' ? (
-            <CameraCapture eventId={event.id} onUploadSuccess={handleUploadSuccess} />
+            <CameraCapture 
+              eventId={event.id} 
+              onUploadSuccess={handleUploadSuccess}
+              onCameraStart={() => setCameraStarted(true)}
+            />
           ) : (
             <ManualUpload eventId={event.id} onUploadSuccess={handleUploadSuccess} />
           )}
