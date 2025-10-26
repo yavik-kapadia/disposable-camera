@@ -30,6 +30,7 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
   const [zoom, setZoom] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [supportsFullscreen, setSupportsFullscreen] = useState(false);
+  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
   const containerRef = useRef<HTMLDivElement>(null);
 
   const startCamera = async () => {
@@ -259,15 +260,35 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
 
   // Handle orientation changes
   useEffect(() => {
-    if (!cameraActive) return;
+    // Detect and update orientation state
+    const updateOrientation = () => {
+      const isLandscape = window.innerWidth > window.innerHeight;
+      const newOrientation = isLandscape ? 'landscape' : 'portrait';
+      setOrientation(newOrientation);
+      console.log('[Camera] Orientation:', newOrientation);
+    };
+
+    // Initial orientation
+    updateOrientation();
+
+    if (!cameraActive) {
+      // Still listen to orientation even if camera is off
+      window.addEventListener('resize', updateOrientation);
+      return () => {
+        window.removeEventListener('resize', updateOrientation);
+      };
+    }
 
     let debounceTimer: NodeJS.Timeout;
 
     const handleOrientationChange = () => {
-      // Debounce to avoid rapid restarts
+      // Update orientation immediately
+      updateOrientation();
+      
+      // Debounce camera restart to avoid rapid restarts
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(async () => {
-        console.log('[Camera] Orientation changed, restarting camera...');
+        console.log('[Camera] Restarting camera for new orientation...');
         
         // Stop current stream
         if (stream) {
@@ -280,6 +301,8 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
             const mediaStream = await navigator.mediaDevices.getUserMedia({
               video: {
                 facingMode: facingMode,
+                width: { ideal: orientation === 'landscape' ? 1920 : 1080 },
+                height: { ideal: orientation === 'landscape' ? 1080 : 1920 }
               },
             });
 
@@ -304,7 +327,7 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
       window.removeEventListener('orientationchange', handleOrientationChange);
       window.removeEventListener('resize', handleOrientationChange);
     };
-  }, [cameraActive, facingMode, stream]);
+  }, [cameraActive, facingMode, stream, orientation]);
 
   const executeCapturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -530,18 +553,21 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
         </div>
       )}
 
-      <div 
+      <div
         ref={containerRef}
         className={`relative bg-black overflow-hidden shadow-2xl transition-all ${
-          isFullscreen ? 'fixed inset-0 z-50 rounded-none' : 'rounded-2xl aspect-4/3'
+          isFullscreen ? 'fixed inset-0 z-50 rounded-none' : 'rounded-2xl'
         }`}
+        style={{
+          aspectRatio: isFullscreen ? 'auto' : (orientation === 'landscape' ? '16/9' : '3/4')
+        }}
       >
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
           style={{
             filter: filter === 'bw' ? 'grayscale(100%)' : 
                    filter === 'sepia' ? 'sepia(100%)' : 
