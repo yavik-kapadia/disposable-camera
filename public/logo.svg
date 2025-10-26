@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-labelledby="title desc">
+  <title>Disposable Camera App Logo</title>
+  <desc>Square disposable camera logo with centered lens and flash.</desc>
+  <rect x="20" y="40" width="160" height="120" rx="20" fill="#0f172a"/>
+  <rect x="20" y="40" width="160" height="30" rx="20" fill="#111827"/>
+  <!-- Stylized film sprocket holes (rounded rectangles) -->
+  <g id="sprockets" fill="#0b1324" opacity="0.95">
+    <!-- Left side -->
+    <rect x="26" y="62" width="6" height="10" rx="1.5"/>
+    <rect x="26" y="90" width="6" height="10" rx="1.5"/>
+    <rect x="26" y="118" width="6" height="10" rx="1.5"/>
+    <!-- Right side -->
+    <rect x="168" y="62" width="6" height="10" rx="1.5"/>
+    <rect x="168" y="90" width="6" height="10" rx="1.5"/>
+    <rect x="168" y="118" width="6" height="10" rx="1.5"/>
+  </g>
+  <circle cx="100" cy="105" r="40" fill="#111827" stroke="#1f2937" stroke-width="6"/>
+  <circle cx="100" cy="105" r="25" fill="#0b1324"/>
+  <circle cx="100" cy="105" r="15" fill="#22d3ee"/>
+  <circle cx="100" cy="105" r="5" fill="#e6fbff" opacity="0.9"/>
+  <rect x="140" y="50" width="20" height="12" rx="6" fill="#22d3ee"/>
+  <path d="M140 90 l18 -12 -6 14 12 1 -26 20 6 -16 -12 -1z" fill="#22d3ee"/>
+</svg>
