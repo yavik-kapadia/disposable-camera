@@ -25,7 +25,6 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Disposable Camera - Event Photo Sharing",
   description: "Share and collect photos from your events with a virtual disposable camera",
-  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

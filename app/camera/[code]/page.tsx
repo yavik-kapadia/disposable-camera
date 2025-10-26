@@ -39,23 +39,10 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
                            (window.navigator as any).standalone === true;
     setIsStandalone(isInStandalone);
     
-    // Update manifest link with cache busting
-    const manifestLink = document.querySelector('link[rel="manifest"]');
-    const manifestUrl = `/camera/${resolvedParams.code}/manifest.json?v=${Date.now()}`;
-    if (manifestLink) {
-      manifestLink.setAttribute('href', manifestUrl);
-    } else {
-      const link = document.createElement('link');
-      link.rel = 'manifest';
-      link.href = manifestUrl;
-      document.head.appendChild(link);
-    }
-    
     // Log for debugging
-    console.log('[PWA Debug] Manifest URL:', manifestUrl);
     console.log('[PWA Debug] Current URL:', window.location.href);
     
-    // Register service worker with event-specific scope (after manifest is set)
+    // Register service worker with event-specific scope
     if ('serviceWorker' in navigator) {
       const swScope = `/camera/${resolvedParams.code}/`;
       navigator.serviceWorker
@@ -110,42 +97,6 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
 
       setEvent(eventData);
       
-      // Update page title and meta tags for iOS
-      document.title = `${eventData.name} - Camera`;
-      
-      // Update or create apple-mobile-web-app-title meta tag
-      let appleTitleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
-      if (appleTitleMeta) {
-        appleTitleMeta.setAttribute('content', eventData.name);
-      } else {
-        appleTitleMeta = document.createElement('meta');
-        appleTitleMeta.setAttribute('name', 'apple-mobile-web-app-title');
-        appleTitleMeta.setAttribute('content', eventData.name);
-        document.head.appendChild(appleTitleMeta);
-      }
-      
-      // Update application-name meta tag
-      let appNameMeta = document.querySelector('meta[name="application-name"]');
-      if (appNameMeta) {
-        appNameMeta.setAttribute('content', eventData.name);
-      } else {
-        appNameMeta = document.createElement('meta');
-        appNameMeta.setAttribute('name', 'application-name');
-        appNameMeta.setAttribute('content', eventData.name);
-        document.head.appendChild(appNameMeta);
-      }
-      
-      // Update theme-color meta tag
-      let themeColorMeta = document.querySelector('meta[name="theme-color"]');
-      if (themeColorMeta) {
-        themeColorMeta.setAttribute('content', '#f97316');
-      } else {
-        themeColorMeta = document.createElement('meta');
-        themeColorMeta.setAttribute('name', 'theme-color');
-        themeColorMeta.setAttribute('content', '#f97316');
-        document.head.appendChild(themeColorMeta);
-      }
-      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load event');
     } finally {
@@ -173,7 +124,7 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50 flex items-center justify-center">
+      <div className="min-h-screen bg-linear-to-br from-orange-50 via-orange-100 to-orange-50 flex items-center justify-center">
         <div className="text-xl">Loading event...</div>
       </div>
     );
@@ -181,7 +132,7 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
 
   if (error || !event) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50 flex items-center justify-center">
+      <div className="min-h-screen bg-linear-to-br from-orange-50 via-orange-100 to-orange-50 flex items-center justify-center">
         <div className="text-center p-8">
           <div className="text-6xl mb-4">😞</div>
           <p className="text-xl text-red-600 mb-4">{error || 'Event not found'}</p>
@@ -197,11 +148,11 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50">
+    <div className="min-h-screen bg-linear-to-br from-orange-50 via-orange-100 to-orange-50">
         <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold mb-2 bg-linear-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">
             {event.name}
           </h1>
           {event.description && (
@@ -231,7 +182,7 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
           {/* PWA Install Prompt */}
           {showInstallPrompt && !isStandalone && (
             <div className="mt-4 max-w-2xl mx-auto">
-              <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg p-4 text-white shadow-lg">
+              <div className="bg-linear-to-r from-orange-500 to-orange-600 rounded-lg p-4 text-white shadow-lg">
                 <div className="flex items-start gap-3">
                   <span className="text-3xl shrink-0">📱</span>
                   <div className="flex-1">
@@ -304,7 +255,7 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
               onClick={() => setMode('camera')}
               className={`px-6 py-3 rounded-lg font-semibold transition-all ${
                 mode === 'camera'
-                  ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white'
+                  ? 'bg-linear-to-r from-orange-600 to-orange-500 text-white'
                   : 'text-gray-600 hover:text-gray-800'
               }`}
             >
@@ -314,7 +265,7 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
               onClick={() => setMode('upload')}
               className={`px-6 py-3 rounded-lg font-semibold transition-all ${
                 mode === 'upload'
-                  ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white'
+                  ? 'bg-linear-to-r from-orange-600 to-orange-500 text-white'
                   : 'text-gray-600 hover:text-gray-800'
               }`}
             >
