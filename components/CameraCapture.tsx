@@ -268,17 +268,17 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
       setOrientation(newOrientation);
       
       // iOS Safari doesn't support screen.orientation.angle properly
-      // Use a simpler approach: detect landscape/portrait and apply fixed rotation
-      // Mobile cameras typically capture in landscape orientation by default
-      // When device is in portrait, we need to rotate the video 90 degrees
+      // Mobile cameras on iOS capture in fixed orientation
+      // We need to rotate the video feed to match device orientation
       
       let videoRotation = 0;
       
       if (newOrientation === 'portrait') {
-        // Portrait mode: rotate video 90 degrees clockwise to display upright
-        videoRotation = facingMode === 'environment' ? 90 : -90;
+        // Portrait mode: rotate video counter-clockwise to display upright
+        // Back camera needs -90°, front camera needs 90°
+        videoRotation = facingMode === 'environment' ? -90 : 90;
       } else {
-        // Landscape mode: video is already in natural orientation
+        // Landscape mode: no rotation needed
         videoRotation = 0;
       }
       
@@ -586,14 +586,20 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
           autoPlay
           playsInline
           muted
-          className="w-full h-full object-contain"
+          className="w-full h-full"
           style={{
             filter: filter === 'bw' ? 'grayscale(100%)' : 
                    filter === 'sepia' ? 'sepia(100%)' : 
                    filter === 'vintage' ? 'saturate(80%) sepia(20%) hue-rotate(-10deg)' : 
                    'none',
             transform: `rotate(${rotation}deg) scale(${zoom})`,
-            transition: 'transform 0.3s ease-out'
+            transformOrigin: 'center center',
+            transition: 'transform 0.3s ease-out',
+            objectFit: 'cover',
+            width: rotation !== 0 ? '100vh' : '100%',
+            height: rotation !== 0 ? '100vw' : '100%',
+            maxWidth: rotation !== 0 ? 'none' : '100%',
+            maxHeight: rotation !== 0 ? 'none' : '100%'
           }}
         />
         <canvas ref={canvasRef} className="hidden" />
