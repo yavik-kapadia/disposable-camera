@@ -16,6 +16,7 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
   const [cameraActive, setCameraActive] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadQueue, setUploadQueue] = useState(0); // Track number of uploads in progress
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
   const [error, setError] = useState('');
 
@@ -99,88 +100,90 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
         return;
       }
 
-      try {
-        setUploading(true);
+      // Flash effect immediately
+      const flashDiv = document.createElement('div');
+      flashDiv.className =
+        'fixed inset-0 bg-white z-50 pointer-events-none';
+      flashDiv.style.animation = 'flash 0.2s ease-out';
+      document.body.appendChild(flashDiv);
+      setTimeout(() => document.body.removeChild(flashDiv), 200);
 
-        const originalFile = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
+      // Allow user to take another photo immediately
+      setCapturing(false);
+      setUploading(false);
 
-        // Compress full-size image
-        const compressedBlob = await compressImage(originalFile);
+      // Upload in background (non-blocking)
+      setUploadQueue(prev => prev + 1);
+      
+      (async () => {
+        try {
+          const originalFile = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
 
-        // Generate WebP thumbnail client-side
-        const thumbnailBlob = await generateThumbnail(originalFile);
+          // Compress full-size image
+          const compressedBlob = await compressImage(originalFile);
 
-        // Generate unique filenames
-        const timestamp = Date.now();
-        const fileName = `photo_${timestamp}.jpg`;
-        const thumbnailName = `thumb_${timestamp}.webp`;
-        const filePath = `${eventId}/${fileName}`;
-        const thumbnailPath = `${eventId}/${thumbnailName}`;
+          // Generate WebP thumbnail client-side
+          const thumbnailBlob = await generateThumbnail(originalFile);
 
-        // Upload full-size image to Supabase Storage
-        const { error: uploadError } = await supabase.storage
-          .from('event-images')
-          .upload(filePath, compressedBlob, {
-            contentType: 'image/jpeg',
-            upsert: false,
+          // Generate unique filenames
+          const timestamp = Date.now();
+          const fileName = `photo_${timestamp}.jpg`;
+          const thumbnailName = `thumb_${timestamp}.webp`;
+          const filePath = `${eventId}/${fileName}`;
+          const thumbnailPath = `${eventId}/${thumbnailName}`;
+
+          // Upload full-size image to Supabase Storage
+          const { error: uploadError } = await supabase.storage
+            .from('event-images')
+            .upload(filePath, compressedBlob, {
+              contentType: 'image/jpeg',
+              upsert: false,
+            });
+
+          if (uploadError) throw uploadError;
+
+          // Upload thumbnail
+          const { error: thumbError } = await supabase.storage
+            .from('event-images')
+            .upload(thumbnailPath, thumbnailBlob, {
+              contentType: 'image/webp',
+              upsert: false,
+            });
+
+          if (thumbError) throw thumbError;
+
+          // Save metadata to database with thumbnail path
+          const { error: dbError } = await supabase.from('images').insert({
+            event_id: eventId,
+            file_path: filePath,
+            file_name: fileName,
+            thumbnail_path: thumbnailPath,
+            uploaded_by: null,
+            metadata: {
+              timestamp,
+              type: 'camera',
+            },
           });
 
-        if (uploadError) throw uploadError;
+          if (dbError) throw dbError;
 
-        // Upload thumbnail
-        const { error: thumbError } = await supabase.storage
-          .from('event-images')
-          .upload(thumbnailPath, thumbnailBlob, {
-            contentType: 'image/webp',
-            upsert: false,
-          });
-
-        if (thumbError) throw thumbError;
-
-        // Save metadata to database with thumbnail path
-        const { error: dbError } = await supabase.from('images').insert({
-          event_id: eventId,
-          file_path: filePath,
-          file_name: fileName,
-          thumbnail_path: thumbnailPath,
-          uploaded_by: null,
-          metadata: {
-            timestamp,
-            type: 'camera',
-          },
-        });
-
-        if (dbError) throw dbError;
-
-        // Download to device
-       // const url = URL.createObjectURL(compressedBlob);
-       // const a = document.createElement('a');
-       // a.href = url;
-       // a.download = fileName;
-       // document.body.appendChild(a);
-       // a.click();
-       // document.body.removeChild(a);
-       // URL.revokeObjectURL(url);
-
-        // Flash effect
-        const flashDiv = document.createElement('div');
-        flashDiv.className =
-          'fixed inset-0 bg-white z-50 animate-pulse pointer-events-none';
-        document.body.appendChild(flashDiv);
-        setTimeout(() => document.body.removeChild(flashDiv), 200);
-
-        if (onUploadSuccess) {
-          onUploadSuccess();
+          if (onUploadSuccess) {
+            onUploadSuccess();
+          }
+        } catch (err) {
+          console.error('Background upload error:', err);
+          const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+          console.error('Error details:', errorMessage);
+          // Show a non-intrusive error notification instead of alert
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+          errorDiv.textContent = `Upload failed: ${errorMessage}`;
+          document.body.appendChild(errorDiv);
+          setTimeout(() => document.body.removeChild(errorDiv), 5000);
+        } finally {
+          setUploadQueue(prev => Math.max(0, prev - 1));
         }
-      } catch (err) {
-        console.error('Upload error:', err);
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        console.error('Error details:', errorMessage);
-        alert(`Failed to upload photo: ${errorMessage}\n\nPlease check your internet connection and try again.`);
-      } finally {
-        setUploading(false);
-        setCapturing(false);
-      }
+      })();
     }, 'image/jpeg', 0.9);
   };
 
@@ -189,6 +192,14 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
       {error && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
           {error}
+        </div>
+      )}
+
+      {/* Upload Queue Indicator */}
+      {uploadQueue > 0 && (
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 rounded-lg flex items-center gap-2">
+          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <span>Uploading {uploadQueue} photo{uploadQueue > 1 ? 's' : ''}...</span>
         </div>
       )}
 
@@ -208,7 +219,7 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
             {/* Switch Camera */}
             <button
               onClick={switchCamera}
-              disabled={!cameraActive || uploading}
+              disabled={!cameraActive}
               className="p-3 bg-white/20 hover:bg-white/30 rounded-full backdrop-blur-sm disabled:opacity-50 transition-all"
               title="Switch camera"
             >
@@ -230,14 +241,10 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
             {/* Capture Button */}
             <button
               onClick={capturePhoto}
-              disabled={!cameraActive || capturing || uploading}
+              disabled={!cameraActive || capturing}
               className="w-20 h-20 rounded-full border-4 border-white bg-white/20 hover:bg-white/30 disabled:opacity-50 transition-all active:scale-95 flex items-center justify-center backdrop-blur-sm"
             >
-              {uploading ? (
-                <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-white" />
-              )}
+              <div className="w-16 h-16 rounded-full bg-white" />
             </button>
 
             {/* Restart Camera */}
