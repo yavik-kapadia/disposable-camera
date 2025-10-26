@@ -535,7 +535,7 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
           autoPlay
           playsInline
           muted
-          className="w-full h-full object-contain"
+          className="w-full h-full object-cover"
           style={{
             filter: filter === 'bw' ? 'grayscale(100%)' : 
                    filter === 'sepia' ? 'sepia(100%)' : 
