@@ -101,64 +101,28 @@ serve(async (req) => {
   }
 });
 
-// Thumbnail generation using ImageMagick
+// Thumbnail generation - simplified version for Edge Functions
+// Note: Full image processing with ImageMagick requires filesystem access
+// which is blocked in Supabase Edge Functions. For now, we return the original
+// image. Future options:
+// 1. Use a WASM-based image processor
+// 2. Use external API (Cloudinary, imgix)
+// 3. Pre-process on client side
 async function generateThumbnail(imageBytes: Uint8Array, mimeType: string): Promise<Blob> {
-  let tempInput: string | null = null;
-  let tempOutput: string | null = null;
-  
   try {
-    console.log(`Processing ${imageBytes.length} bytes with ImageMagick...`);
+    console.log(`Processing ${imageBytes.length} bytes (returning original - no processing available)...`);
     
-    // Create temporary files
-    tempInput = await Deno.makeTempFile({ suffix: '.jpg' });
-    tempOutput = await Deno.makeTempFile({ suffix: '.webp' });
+    // For now, just return the original image
+    // The database will store this path, and the client will use it for thumbnails
+    // This ensures the app works while we figure out a better solution
     
-    // Write input image to temp file
-    await Deno.writeFile(tempInput, imageBytes);
+    console.log(`Thumbnail created: ${imageBytes.length} bytes (100% of original - no compression)`);
+    console.warn('Note: Thumbnail generation requires external service. Consider using Cloudinary or client-side processing.');
     
-    // Use ImageMagick convert command to resize and convert to WebP
-    // -resize 400x400> means resize to fit within 400x400, don't enlarge
-    // -quality 70 sets WebP quality
-    const command = new Deno.Command("convert", {
-      args: [
-        tempInput,
-        "-resize", "400x400>",  // Resize to fit within 400x400, don't upscale
-        "-quality", "70",        // WebP quality
-        tempOutput
-      ],
-    });
-    
-    const { success, stderr } = await command.output();
-    
-    if (!success) {
-      const errorText = new TextDecoder().decode(stderr);
-      throw new Error(`ImageMagick conversion failed: ${errorText}`);
-    }
-    
-    // Read the output file
-    const resizedBytes = await Deno.readFile(tempOutput);
-    
-    console.log(`Thumbnail generated: ${resizedBytes.length} bytes (${Math.round(resizedBytes.length / imageBytes.length * 100)}% of original)`);
-    
-    // Cleanup temp files
-    await Deno.remove(tempInput);
-    await Deno.remove(tempOutput);
-    tempInput = null;
-    tempOutput = null;
-    
-    return new Blob([resizedBytes], { type: 'image/webp' });
+    return new Blob([imageBytes], { type: mimeType });
     
   } catch (error) {
-    console.error('ImageMagick thumbnail generation failed:', error);
-    
-    // Cleanup on error
-    try {
-      if (tempInput) await Deno.remove(tempInput);
-      if (tempOutput) await Deno.remove(tempOutput);
-    } catch (cleanupError) {
-      console.error('Cleanup error:', cleanupError);
-    }
-    
+    console.error('Thumbnail generation failed:', error);
     throw new Error(`Failed to generate thumbnail: ${error.message}`);
   }
 }

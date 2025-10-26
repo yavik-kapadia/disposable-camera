@@ -59,6 +59,68 @@ export async function compressImage(file: File, maxWidth: number = 1920, quality
   });
 }
 
+// Generate WebP thumbnail for gallery display (client-side)
+export async function generateThumbnail(file: File, maxWidth: number = 400): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Scale down maintaining aspect ratio
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxWidth) {
+            width = (width * maxWidth) / height;
+            height = maxWidth;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // Try WebP first, fallback to JPEG if not supported
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              // Fallback to JPEG
+              canvas.toBlob(
+                (jpegBlob) => {
+                  if (jpegBlob) {
+                    resolve(jpegBlob);
+                  } else {
+                    reject(new Error('Thumbnail generation failed'));
+                  }
+                },
+                'image/jpeg',
+                0.7
+              );
+            }
+          },
+          'image/webp',
+          0.7
+        );
+      };
+      img.onerror = reject;
+    };
+    reader.onerror = reject;
+  });
+}
+
 // Download file to device
 export function downloadFile(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
