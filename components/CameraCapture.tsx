@@ -31,6 +31,7 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [supportsFullscreen, setSupportsFullscreen] = useState(false);
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
+  const [rotation, setRotation] = useState(0); // CSS rotation in degrees
   const containerRef = useRef<HTMLDivElement>(null);
 
   const startCamera = async () => {
@@ -265,7 +266,23 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
       const isLandscape = window.innerWidth > window.innerHeight;
       const newOrientation = isLandscape ? 'landscape' : 'portrait';
       setOrientation(newOrientation);
-      console.log('[Camera] Orientation:', newOrientation);
+      
+      // Get rotation angle from screen orientation
+      let angle = 0;
+      if (screen.orientation && screen.orientation.angle !== undefined) {
+        angle = screen.orientation.angle;
+      } else if ((window as any).orientation !== undefined) {
+        // Fallback for older iOS
+        const orientationValue = (window as any).orientation;
+        angle = orientationValue === 90 ? 90 : orientationValue === -90 ? 270 : 0;
+      }
+      
+      // For back camera, rotation needs to be adjusted
+      // Front camera: rotate clockwise, Back camera: rotate counter-clockwise
+      const videoRotation = facingMode === 'environment' ? -angle : angle;
+      setRotation(videoRotation);
+      
+      console.log('[Camera] Orientation:', newOrientation, 'Angle:', angle, 'Video Rotation:', videoRotation);
     };
 
     // Initial orientation
@@ -327,7 +344,7 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
       window.removeEventListener('orientationchange', handleOrientationChange);
       window.removeEventListener('resize', handleOrientationChange);
     };
-  }, [cameraActive, facingMode, stream, orientation]);
+  }, [cameraActive, facingMode, stream, orientation, rotation]);
 
   const executeCapturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -573,8 +590,8 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
                    filter === 'sepia' ? 'sepia(100%)' : 
                    filter === 'vintage' ? 'saturate(80%) sepia(20%) hue-rotate(-10deg)' : 
                    'none',
-            transform: `scale(${zoom})`,
-            transition: 'transform 0.2s ease-out'
+            transform: `rotate(${rotation}deg) scale(${zoom})`,
+            transition: 'transform 0.3s ease-out'
           }}
         />
         <canvas ref={canvasRef} className="hidden" />
