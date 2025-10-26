@@ -28,6 +28,7 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
   const [switching, setSwitching] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [supportsFullscreen, setSupportsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const startCamera = async () => {
@@ -87,6 +88,16 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
   };
 
   useEffect(() => {
+    // Check if fullscreen is supported
+    const elem = document.documentElement as any;
+    const isSupported = !!(
+      elem.requestFullscreen ||
+      elem.webkitRequestFullscreen ||
+      elem.mozRequestFullScreen ||
+      elem.msRequestFullscreen
+    );
+    setSupportsFullscreen(isSupported);
+
     // Cleanup on unmount
     return () => {
       stopCamera();
@@ -206,20 +217,22 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
       }
     } catch (err) {
       console.error('Fullscreen error:', err);
-      // Show user-friendly error
-      alert('Fullscreen mode is not supported on this browser');
+      // Silently fail - button won't be shown if not supported anyway
     }
   };
 
-  const handleZoomIn = () => {
+  const handleZoomIn = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setZoom(prev => Math.min(prev + 0.5, 3));
   };
 
-  const handleZoomOut = () => {
+  const handleZoomOut = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setZoom(prev => Math.max(prev - 0.5, 1));
   };
 
-  const resetZoom = () => {
+  const resetZoom = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setZoom(1);
   };
 
@@ -539,7 +552,7 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
         )}
 
         {/* Fullscreen Toggle */}
-        {cameraActive && (
+        {cameraActive && supportsFullscreen && (
           <button
             onClick={toggleFullscreen}
             className="absolute top-4 left-1/2 -translate-x-1/2 p-2 bg-black/70 hover:bg-black/90 rounded-full backdrop-blur-sm transition-all"
@@ -694,7 +707,8 @@ export default function CameraCapture({ eventId, onUploadSuccess }: CameraCaptur
             Photos are automatically saved to your device and uploaded to the event
             {cameraActive && (
               <span className="block mt-1 text-xs text-gray-500 dark:text-gray-500">
-                💡 Pinch to zoom on mobile • Use zoom buttons • Click fullscreen for immersive mode
+                💡 Pinch to zoom on mobile • Use zoom buttons
+                {supportsFullscreen && ' • Click fullscreen for immersive mode'}
               </span>
             )}
           </>
