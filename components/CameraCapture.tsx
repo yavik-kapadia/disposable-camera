@@ -267,22 +267,24 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
       const newOrientation = isLandscape ? 'landscape' : 'portrait';
       setOrientation(newOrientation);
       
-      // Get rotation angle from screen orientation
-      let angle = 0;
-      if (screen.orientation && screen.orientation.angle !== undefined) {
-        angle = screen.orientation.angle;
-      } else if ((window as any).orientation !== undefined) {
-        // Fallback for older iOS
-        const orientationValue = (window as any).orientation;
-        angle = orientationValue === 90 ? 90 : orientationValue === -90 ? 270 : 0;
+      // iOS Safari doesn't support screen.orientation.angle properly
+      // Use a simpler approach: detect landscape/portrait and apply fixed rotation
+      // Mobile cameras typically capture in landscape orientation by default
+      // When device is in portrait, we need to rotate the video 90 degrees
+      
+      let videoRotation = 0;
+      
+      if (newOrientation === 'portrait') {
+        // Portrait mode: rotate video 90 degrees clockwise to display upright
+        videoRotation = facingMode === 'environment' ? 90 : -90;
+      } else {
+        // Landscape mode: video is already in natural orientation
+        videoRotation = 0;
       }
       
-      // For back camera, rotation needs to be adjusted
-      // Front camera: rotate clockwise, Back camera: rotate counter-clockwise
-      const videoRotation = facingMode === 'environment' ? -angle : angle;
       setRotation(videoRotation);
       
-      console.log('[Camera] Orientation:', newOrientation, 'Angle:', angle, 'Video Rotation:', videoRotation);
+      console.log('[Camera] Orientation:', newOrientation, 'FacingMode:', facingMode, 'Video Rotation:', videoRotation);
     };
 
     // Initial orientation
