@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import sharp from 'https://esm.sh/sharp@0.33.0';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -101,29 +101,64 @@ serve(async (req) => {
   }
 });
 
-// Thumbnail generation using Sharp library
+// Thumbnail generation using ImageMagick
 async function generateThumbnail(imageBytes: Uint8Array, mimeType: string): Promise<Blob> {
+  let tempInput: string | null = null;
+  let tempOutput: string | null = null;
+  
   try {
-    console.log(`Processing ${imageBytes.length} bytes with Sharp...`);
+    console.log(`Processing ${imageBytes.length} bytes with ImageMagick...`);
     
-    // Use Sharp to resize and convert to WebP
-    const resizedBuffer = await sharp(imageBytes)
-      .resize(400, 400, { 
-        fit: 'inside',           // Maintain aspect ratio, fit within 400x400
-        withoutEnlargement: true // Don't upscale smaller images
-      })
-      .webp({ 
-        quality: 70,             // Good balance of size vs quality
-        effort: 4                // Compression effort (0-6, higher = smaller file)
-      })
-      .toBuffer();
+    // Create temporary files
+    tempInput = await Deno.makeTempFile({ suffix: '.jpg' });
+    tempOutput = await Deno.makeTempFile({ suffix: '.webp' });
     
-    console.log(`Thumbnail generated: ${resizedBuffer.length} bytes (${Math.round(resizedBuffer.length / imageBytes.length * 100)}% of original)`);
+    // Write input image to temp file
+    await Deno.writeFile(tempInput, imageBytes);
     
-    return new Blob([resizedBuffer], { type: 'image/webp' });
+    // Use ImageMagick convert command to resize and convert to WebP
+    // -resize 400x400> means resize to fit within 400x400, don't enlarge
+    // -quality 70 sets WebP quality
+    const command = new Deno.Command("convert", {
+      args: [
+        tempInput,
+        "-resize", "400x400>",  // Resize to fit within 400x400, don't upscale
+        "-quality", "70",        // WebP quality
+        tempOutput
+      ],
+    });
+    
+    const { success, stderr } = await command.output();
+    
+    if (!success) {
+      const errorText = new TextDecoder().decode(stderr);
+      throw new Error(`ImageMagick conversion failed: ${errorText}`);
+    }
+    
+    // Read the output file
+    const resizedBytes = await Deno.readFile(tempOutput);
+    
+    console.log(`Thumbnail generated: ${resizedBytes.length} bytes (${Math.round(resizedBytes.length / imageBytes.length * 100)}% of original)`);
+    
+    // Cleanup temp files
+    await Deno.remove(tempInput);
+    await Deno.remove(tempOutput);
+    tempInput = null;
+    tempOutput = null;
+    
+    return new Blob([resizedBytes], { type: 'image/webp' });
     
   } catch (error) {
-    console.error('Sharp thumbnail generation failed:', error);
+    console.error('ImageMagick thumbnail generation failed:', error);
+    
+    // Cleanup on error
+    try {
+      if (tempInput) await Deno.remove(tempInput);
+      if (tempOutput) await Deno.remove(tempOutput);
+    } catch (cleanupError) {
+      console.error('Cleanup error:', cleanupError);
+    }
+    
     throw new Error(`Failed to generate thumbnail: ${error.message}`);
   }
 }

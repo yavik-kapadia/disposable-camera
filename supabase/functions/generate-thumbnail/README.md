@@ -52,43 +52,48 @@ const response = await fetch(
 
 ## Image Processing
 
-✅ **Production-ready!** This function uses Sharp for high-quality thumbnail generation.
+✅ **Production-ready!** This function uses ImageMagick for high-quality thumbnail generation.
 
 The implementation:
-- Resizes images to 400x400px (maintains aspect ratio)
+- Resizes images to fit within 400x400px (maintains aspect ratio)
 - Converts to WebP format for optimal compression
 - Quality set to 70% (great balance of size vs quality)
 - Typical compression: 95-98% size reduction
+- Uses native Deno Command API for ImageMagick
 
 ### Configuration Options
 
-You can adjust these parameters in the `generateThumbnail` function:
+You can adjust these parameters in the ImageMagick command:
 
 ```typescript
-.resize(400, 400, { 
-  fit: 'inside',           // 'cover', 'contain', 'fill', 'inside', 'outside'
-  withoutEnlargement: true // Don't upscale smaller images
-})
-.webp({ 
-  quality: 70,             // 1-100 (higher = larger file, better quality)
-  effort: 4                // 0-6 (higher = smaller file, slower processing)
-})
+const command = new Deno.Command("convert", {
+  args: [
+    tempInput,
+    "-resize", "400x400>",  // Change dimensions (> means don't upscale)
+    "-quality", "70",        // Change quality (1-100)
+    tempOutput
+  ],
+});
 ```
 
 ### Alternative Formats
 
-If you need different output formats:
+If you need different output formats, change the output file extension and quality:
 
-```typescript
-// JPEG instead of WebP
-.jpeg({ quality: 80 })
+```bash
+# JPEG instead of WebP
+"-resize", "400x400>", "-quality", "80", "output.jpg"
 
-// PNG (larger files, lossless)
-.png({ compressionLevel: 9 })
+# PNG (larger files, lossless)
+"-resize", "400x400>", "output.png"
 
-// AVIF (newer format, smaller files, slower)
-.avif({ quality: 65 })
+# AVIF (newer format, requires ImageMagick 7+)
+"-resize", "400x400>", "-quality", "65", "output.avif"
 ```
+
+### Requirements
+
+ImageMagick must be available in the Supabase Edge Function environment. This is typically pre-installed, but if you encounter errors, check the Supabase documentation for available system tools.
 
 ## Cost Considerations
 
