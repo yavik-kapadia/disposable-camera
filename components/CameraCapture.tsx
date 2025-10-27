@@ -194,6 +194,7 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
 
     let initialDistance = 0;
     let initialZoom = 1;
+    let lastZoom = 1;
     let pinchZoomTimeout: NodeJS.Timeout | null = null;
 
     const handleTouchStart = (e: TouchEvent) => {
@@ -206,6 +207,7 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
           touch2.clientY - touch1.clientY
         );
         initialZoom = zoom;
+        lastZoom = zoom;
       }
     };
 
@@ -218,8 +220,24 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
           touch2.clientX - touch1.clientX,
           touch2.clientY - touch1.clientY
         );
-        const scale = currentDistance / initialDistance;
-        const newZoom = Math.min(Math.max(initialZoom * scale, zoomRange.min), zoomRange.max);
+        
+        // Calculate scale but limit how much it can change per frame
+        const rawScale = currentDistance / initialDistance;
+        // Dampen the scale to make it less sensitive
+        const scale = 1 + (rawScale - 1) * 0.5; // 50% dampening
+        
+        let targetZoom = initialZoom * scale;
+        
+        // Limit zoom change per frame to 0.2x for smoother control
+        const maxChangePerFrame = 0.2;
+        if (targetZoom > lastZoom + maxChangePerFrame) {
+          targetZoom = lastZoom + maxChangePerFrame;
+        } else if (targetZoom < lastZoom - maxChangePerFrame) {
+          targetZoom = lastZoom - maxChangePerFrame;
+        }
+        
+        const newZoom = Math.min(Math.max(targetZoom, zoomRange.min), zoomRange.max);
+        lastZoom = newZoom;
         setZoom(newZoom);
         
         // Apply hardware zoom in real-time with throttling
