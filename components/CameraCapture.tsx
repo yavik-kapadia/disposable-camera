@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { compressImage, generateThumbnail } from '@/utils/helpers';
 
@@ -179,6 +179,7 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
 
     let initialDistance = 0;
     let initialZoom = 1;
+    let pinchZoomTimeout: NodeJS.Timeout | null = null;
 
     const handleTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 2) {
@@ -193,7 +194,7 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
       }
     };
 
-    const handleTouchMove = (e: TouchEvent) => {
+    const handleTouchMove = async (e: TouchEvent) => {
       if (e.touches.length === 2) {
         e.preventDefault();
         const touch1 = e.touches[0];
@@ -205,26 +206,42 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
         const scale = currentDistance / initialDistance;
         const newZoom = Math.min(Math.max(initialZoom * scale, zoomRange.min), zoomRange.max);
         setZoom(newZoom);
+        
+        // Apply hardware zoom in real-time with throttling
+        if (hardwareZoomSupported) {
+          if (pinchZoomTimeout) {
+            clearTimeout(pinchZoomTimeout);
+          }
+          pinchZoomTimeout = setTimeout(async () => {
+            await applyHardwareZoom(newZoom);
+          }, 50); // Throttle to every 50ms for smooth performance
+        }
       }
     };
 
-    const handleTouchEnd = async () => {
-      // Apply hardware zoom when pinch gesture ends
-      if (hardwareZoomSupported) {
-        await applyHardwareZoom(zoom);
+    const handleTouchEnd = () => {
+      // Clear any pending zoom application
+      if (pinchZoomTimeout) {
+        clearTimeout(pinchZoomTimeout);
+        pinchZoomTimeout = null;
       }
     };
 
     videoElement.addEventListener('touchstart', handleTouchStart, { passive: false });
     videoElement.addEventListener('touchmove', handleTouchMove, { passive: false });
     videoElement.addEventListener('touchend', handleTouchEnd);
+    videoElement.addEventListener('touchcancel', handleTouchEnd);
 
     return () => {
+      if (pinchZoomTimeout) {
+        clearTimeout(pinchZoomTimeout);
+      }
       videoElement.removeEventListener('touchstart', handleTouchStart);
       videoElement.removeEventListener('touchmove', handleTouchMove);
       videoElement.removeEventListener('touchend', handleTouchEnd);
+      videoElement.removeEventListener('touchcancel', handleTouchEnd);
     };
-  }, [zoom, hardwareZoomSupported, zoomRange]);
+  }, [zoom, hardwareZoomSupported, zoomRange, applyHardwareZoom]);
 
   const toggleFullscreen = async () => {
     if (!containerRef.current) return;
@@ -273,7 +290,7 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
   };
 
   // Apply hardware zoom to camera
-  const applyHardwareZoom = async (zoomLevel: number) => {
+  const applyHardwareZoom = useCallback(async (zoomLevel: number) => {
     if (!stream || !hardwareZoomSupported) return;
     
     const videoTrack = stream.getVideoTracks()[0];
@@ -285,7 +302,7 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
     } catch (err) {
       console.error('Failed to apply hardware zoom:', err);
     }
-  };
+  }, [stream, hardwareZoomSupported]);
 
   const handleZoomIn = async (e: React.MouseEvent) => {
     e.stopPropagation();
