@@ -17,6 +17,9 @@
 # E2E test credentials
 e2e/.env.e2e
 
+# Documentation (keep local only)
+/docs/
+
 # next.js
 /.next/
 /out/
