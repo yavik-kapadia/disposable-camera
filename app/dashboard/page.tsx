@@ -44,11 +44,12 @@ export default function Dashboard() {
     if (!user) return;
 
     try {
-      // Fetch user's events
+      // Fetch user's events (exclude soft-deleted ones)
       const { data: eventsData, error: eventsError } = await supabase
         .from('events')
         .select('*')
         .eq('creator_id', user.id)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (eventsError) throw eventsError;
