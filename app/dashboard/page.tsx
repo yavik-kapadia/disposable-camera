@@ -144,6 +144,9 @@ export default function Dashboard() {
       // Remove from local state
       setEvents(events.filter(e => e.id !== eventId));
       
+      // Also refetch to ensure server-side filter is applied
+      await fetchUserEvents();
+      
       alert('Event deleted successfully. Data will be permanently removed after 14 days.');
     } catch (err: any) {
       console.error('Error deleting event:', err);
