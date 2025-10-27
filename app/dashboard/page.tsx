@@ -339,8 +339,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Create Event Button */}
-        {!showCreateForm && (
+        {/* Create Event Button - Only show when events exist */}
+        {!showCreateForm && events.length > 0 && (
           <button
             onClick={() => setShowCreateForm(true)}
             className="mb-8 px-8 py-4 bg-linear-to-r from-orange-600 to-orange-500 dark:from-orange-500 dark:to-orange-600 text-white rounded-xl font-bold hover:from-orange-700 hover:to-orange-600 dark:hover:from-orange-600 dark:hover:to-orange-700 transition-all flex items-center gap-3 shadow-lg hover:shadow-xl hover:scale-105 transform"

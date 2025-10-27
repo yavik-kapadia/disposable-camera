@@ -42,6 +42,8 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const imagesPerPage = 15;
+  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const cameraUrl = event ? `${appUrl}/camera/${event.access_code}` : '';
@@ -203,6 +205,82 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
     setCurrentPage(page);
     // Scroll to top of gallery
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Bulk selection handlers
+  const toggleImageSelection = (imageId: string) => {
+    setSelectedImages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(imageId)) {
+        newSet.delete(imageId);
+      } else {
+        newSet.add(imageId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllImages = () => {
+    if (selectedImages.size === currentImages.length) {
+      setSelectedImages(new Set());
+    } else {
+      setSelectedImages(new Set(currentImages.map(img => img.id)));
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedImages(new Set());
+  };
+
+  // Bulk delete handler
+  const handleBulkDeleteClick = () => {
+    if (selectedImages.size === 0) return;
+    setShowBulkDeleteConfirm(true);
+  };
+
+  const handleBulkDeleteConfirm = async () => {
+    setShowBulkDeleteConfirm(false);
+    
+    try {
+      const imagesToDelete = images.filter(img => selectedImages.has(img.id));
+      
+      for (const image of imagesToDelete) {
+        // Delete from storage (both full image and thumbnail)
+        const filesToDelete = [image.file_path];
+        if (image.thumbnail_path) {
+          filesToDelete.push(image.thumbnail_path);
+        }
+
+        const { error: storageError } = await supabase.storage
+          .from('event-images')
+          .remove(filesToDelete);
+
+        if (storageError) {
+          console.error('Storage deletion error for', image.file_name, ':', storageError);
+        }
+
+        // Delete from database
+        const { error: dbError } = await supabase
+          .from('images')
+          .delete()
+          .eq('id', image.id);
+
+        if (dbError) {
+          console.error('Database deletion error for', image.file_name, ':', dbError);
+        }
+      }
+
+      // Refresh image list
+      await fetchEventData();
+      clearSelection();
+    } catch (err) {
+      console.error('Error in bulk delete:', err);
+      setError('Failed to delete some images');
+    }
+  };
+
+  const handleBulkDeleteCancel = () => {
+    setShowBulkDeleteConfirm(false);
   };
 
   const deleteImage = async (image: Image) => {
@@ -391,9 +469,59 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
                 </div>
               ) : (
                 <>
+                  {/* Bulk Actions Toolbar */}
+                  <div className="mb-4 bg-gray-50 dark:bg-gray-900 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                    <div className="flex flex-wrap items-center gap-4">
+                      {/* Select All */}
+                      <label className="flex items-center gap-2 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={selectedImages.size === currentImages.length && currentImages.length > 0}
+                          onChange={selectAllImages}
+                          className="w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                        />
+                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 group-hover:text-orange-600 dark:group-hover:text-orange-400">
+                          Select All on Page ({currentImages.length})
+                        </span>
+                      </label>
+
+                      {/* Selected Count & Actions */}
+                      {selectedImages.size > 0 && (
+                        <>
+                          <div className="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
+                          <span className="text-sm font-bold text-orange-600 dark:text-orange-400">
+                            {selectedImages.size} selected
+                          </span>
+                          
+                          {/* Bulk Action Buttons */}
+                          <div className="flex gap-2 ml-auto">
+                            <button
+                              onClick={handleBulkDeleteClick}
+                              className="px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg font-semibold hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors text-sm flex items-center gap-2"
+                            >
+                              🗑️ Delete ({selectedImages.size})
+                            </button>
+                            <button
+                              onClick={clearSelection}
+                              className="px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm border border-gray-300 dark:border-gray-600"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {currentImages.map((image) => (
-                      <ImageCard key={image.id} image={image} onDelete={deleteImage} />
+                      <ImageCard 
+                        key={image.id} 
+                        image={image} 
+                        onDelete={deleteImage}
+                        isSelected={selectedImages.has(image.id)}
+                        onToggleSelection={toggleImageSelection}
+                      />
                     ))}
                   </div>
                   
@@ -448,12 +576,62 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
             </div>
           </div>
         </div>
+
+        {/* Bulk Delete Confirmation Modal */}
+        {showBulkDeleteConfirm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 border-2 border-red-500 dark:border-red-600">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-4xl">⚠️</span>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                  Delete {selectedImages.size} Photo{selectedImages.size !== 1 ? 's' : ''}?
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  Are you sure you want to delete <strong className="text-gray-900 dark:text-gray-100">{selectedImages.size} selected photo{selectedImages.size !== 1 ? 's' : ''}</strong>?
+                </p>
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4">
+                  <p className="text-sm text-red-800 dark:text-red-300">
+                    ⚠️ This action cannot be undone.<br />
+                    Photos will be permanently deleted from storage.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={handleBulkDeleteCancel}
+                  className="flex-1 px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-xl font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBulkDeleteConfirm}
+                  className="flex-1 px-6 py-3 bg-red-600 dark:bg-red-700 text-white rounded-xl font-bold hover:bg-red-700 dark:hover:bg-red-600 transition-colors shadow-lg"
+                >
+                  Delete {selectedImages.size} Photo{selectedImages.size !== 1 ? 's' : ''}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function ImageCard({ image, onDelete }: { image: Image; onDelete: (image: Image) => void }) {
+function ImageCard({ 
+  image, 
+  onDelete, 
+  isSelected, 
+  onToggleSelection 
+}: { 
+  image: Image; 
+  onDelete: (image: Image) => void;
+  isSelected: boolean;
+  onToggleSelection: (imageId: string) => void;
+}) {
   const [imageUrl, setImageUrl] = useState<string>('');
   const [imageError, setImageError] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -521,7 +699,9 @@ function ImageCard({ image, onDelete }: { image: Image; onDelete: (image: Image)
   };
 
   return (
-    <div className="group relative aspect-square bg-gray-800 rounded-lg overflow-hidden">
+    <div className={`group relative aspect-square bg-gray-800 rounded-lg overflow-hidden ${
+      isSelected ? 'ring-4 ring-orange-500 ring-offset-2' : ''
+    }`}>
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-700">
           <div className="text-black-200 text-center">
@@ -558,6 +738,19 @@ function ImageCard({ image, onDelete }: { image: Image; onDelete: (image: Image)
           }}
         />
       )}
+      {/* Selection Checkbox */}
+      <div className="absolute top-2 left-2 z-10">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={(e) => {
+            e.stopPropagation();
+            onToggleSelection(image.id);
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className="w-6 h-6 rounded border-gray-300 text-orange-600 focus:ring-orange-500 cursor-pointer shadow-lg bg-white"
+        />
+      </div>
       <div className="absolute inset-0 bg-opacity-0 group-hover:bg-opacity-70 transition-opacity flex items-center justify-center gap-2 pointer-events-none">
         <button
           onClick={downloadImage}
