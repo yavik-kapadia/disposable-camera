@@ -36,6 +36,8 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const imagesPerPage = 10;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const cameraUrl = event ? `${appUrl}/camera/${event.access_code}` : '';
@@ -183,6 +185,18 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     alert('Copied to clipboard!');
+  };
+
+  // Pagination logic
+  const totalPages = Math.ceil(images.length / imagesPerPage);
+  const indexOfLastImage = currentPage * imagesPerPage;
+  const indexOfFirstImage = indexOfLastImage - imagesPerPage;
+  const currentImages = images.slice(indexOfFirstImage, indexOfLastImage);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top of gallery
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const deleteImage = async (image: Image) => {
@@ -370,11 +384,60 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
                   <p className="text-sm mt-2">Share the access code with guests to start collecting photos</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {images.map((image) => (
-                    <ImageCard key={image.id} image={image} onDelete={deleteImage} />
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {currentImages.map((image) => (
+                      <ImageCard key={image.id} image={image} onDelete={deleteImage} />
+                    ))}
+                  </div>
+                  
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="mt-6 flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => goToPage(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        title="Previous page"
+                      >
+                        ← Previous
+                      </button>
+                      
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                          <button
+                            key={page}
+                            onClick={() => goToPage(page)}
+                            className={`w-10 h-10 rounded-lg font-semibold transition-colors ${
+                              currentPage === page
+                                ? 'bg-orange-600 text-white'
+                                : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+                            }`}
+                            title={`Page ${page}`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                      </div>
+                      
+                      <button
+                        onClick={() => goToPage(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        title="Next page"
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Page Info */}
+                  {totalPages > 1 && (
+                    <div className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
+                      Showing {indexOfFirstImage + 1}-{Math.min(indexOfLastImage, images.length)} of {images.length} photos
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
