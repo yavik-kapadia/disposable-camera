@@ -172,6 +172,21 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
     };
   }, []);
 
+  // Apply hardware zoom to camera
+  const applyHardwareZoom = useCallback(async (zoomLevel: number) => {
+    if (!stream || !hardwareZoomSupported) return;
+    
+    const videoTrack = stream.getVideoTracks()[0];
+    try {
+      await videoTrack.applyConstraints({
+        advanced: [{ zoom: zoomLevel } as any]
+      });
+      console.log('Hardware zoom applied:', zoomLevel);
+    } catch (err) {
+      console.error('Failed to apply hardware zoom:', err);
+    }
+  }, [stream, hardwareZoomSupported]);
+
   // Pinch to zoom for mobile
   useEffect(() => {
     const videoElement = videoRef.current;
@@ -288,21 +303,6 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
       // Silently fail - button won't be shown if not supported anyway
     }
   };
-
-  // Apply hardware zoom to camera
-  const applyHardwareZoom = useCallback(async (zoomLevel: number) => {
-    if (!stream || !hardwareZoomSupported) return;
-    
-    const videoTrack = stream.getVideoTracks()[0];
-    try {
-      await videoTrack.applyConstraints({
-        advanced: [{ zoom: zoomLevel } as any]
-      });
-      console.log('Hardware zoom applied:', zoomLevel);
-    } catch (err) {
-      console.error('Failed to apply hardware zoom:', err);
-    }
-  }, [stream, hardwareZoomSupported]);
 
   const handleZoomIn = async (e: React.MouseEvent) => {
     e.stopPropagation();
