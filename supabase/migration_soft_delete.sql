@@ -7,10 +7,13 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
 -- Create index for cleanup queries
 CREATE INDEX IF NOT EXISTS idx_events_deleted_at ON events(deleted_at) WHERE deleted_at IS NOT NULL;
 
--- Drop existing policies to recreate them with soft delete support
+-- Drop ALL existing policies to recreate them with soft delete support
 DROP POLICY IF EXISTS "Anyone can read active events" ON events;
+DROP POLICY IF EXISTS "Creators can read their own events" ON events;
+DROP POLICY IF EXISTS "Anyone can read active non-deleted events" ON events;
 DROP POLICY IF EXISTS "Creators can update their own events" ON events;
 DROP POLICY IF EXISTS "Creators can delete their own events" ON events;
+DROP POLICY IF EXISTS "Service role can delete old events" ON events;
 
 -- Policy: Users can only see their own events (active, inactive, or soft-deleted)
 CREATE POLICY "Creators can read their own events"
@@ -36,6 +39,7 @@ CREATE POLICY "Service role can delete old events"
 
 -- Update images policy to exclude soft-deleted events
 DROP POLICY IF EXISTS "Anyone can read images from active events" ON images;
+DROP POLICY IF EXISTS "Anyone can read images from active non-deleted events" ON images;
 
 CREATE POLICY "Anyone can read images from active non-deleted events"
   ON images FOR SELECT
@@ -50,6 +54,7 @@ CREATE POLICY "Anyone can read images from active non-deleted events"
 
 -- Update image upload policy
 DROP POLICY IF EXISTS "Anyone can upload images to active events" ON images;
+DROP POLICY IF EXISTS "Anyone can upload images to active non-deleted events" ON images;
 
 CREATE POLICY "Anyone can upload images to active non-deleted events"
   ON images FOR INSERT
