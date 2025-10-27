@@ -192,9 +192,7 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
     const videoElement = videoRef.current;
     if (!videoElement) return;
 
-    let initialDistance = 0;
-    let initialZoom = 1;
-    let lastZoom = 1;
+    let lastDistance = 0;
     let pinchZoomTimeout: NodeJS.Timeout | null = null;
 
     const handleTouchStart = (e: TouchEvent) => {
@@ -202,12 +200,10 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
         e.preventDefault();
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
-        initialDistance = Math.hypot(
+        lastDistance = Math.hypot(
           touch2.clientX - touch1.clientX,
           touch2.clientY - touch1.clientY
         );
-        initialZoom = zoom;
-        lastZoom = zoom;
       }
     };
 
@@ -221,34 +217,28 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
           touch2.clientY - touch1.clientY
         );
         
-        // Calculate scale but limit how much it can change per frame
-        const rawScale = currentDistance / initialDistance;
-        // Dampen the scale to make it less sensitive
-        const scale = 1 + (rawScale - 1) * 0.5; // 50% dampening
+        // Calculate incremental zoom based on distance change
+        const distanceChange = currentDistance - lastDistance;
+        // Scale factor: 0.005 means moving fingers 100px apart = +0.5x zoom
+        const zoomChange = distanceChange * 0.005;
         
-        let targetZoom = initialZoom * scale;
+        const newZoom = Math.min(Math.max(zoom + zoomChange, zoomRange.min), zoomRange.max);
         
-        // Limit zoom change per frame to 0.2x for smoother control
-        const maxChangePerFrame = 0.2;
-        if (targetZoom > lastZoom + maxChangePerFrame) {
-          targetZoom = lastZoom + maxChangePerFrame;
-        } else if (targetZoom < lastZoom - maxChangePerFrame) {
-          targetZoom = lastZoom - maxChangePerFrame;
-        }
-        
-        const newZoom = Math.min(Math.max(targetZoom, zoomRange.min), zoomRange.max);
-        lastZoom = newZoom;
-        setZoom(newZoom);
-        
-        // Apply hardware zoom in real-time with throttling
-        if (hardwareZoomSupported) {
-          if (pinchZoomTimeout) {
-            clearTimeout(pinchZoomTimeout);
+        if (Math.abs(newZoom - zoom) > 0.01) { // Only update if change is significant
+          setZoom(newZoom);
+          
+          // Apply hardware zoom in real-time with throttling
+          if (hardwareZoomSupported) {
+            if (pinchZoomTimeout) {
+              clearTimeout(pinchZoomTimeout);
+            }
+            pinchZoomTimeout = setTimeout(async () => {
+              await applyHardwareZoom(newZoom);
+            }, 50); // Throttle to every 50ms for smooth performance
           }
-          pinchZoomTimeout = setTimeout(async () => {
-            await applyHardwareZoom(newZoom);
-          }, 50); // Throttle to every 50ms for smooth performance
         }
+        
+        lastDistance = currentDistance;
       }
     };
 
@@ -258,6 +248,7 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
         clearTimeout(pinchZoomTimeout);
         pinchZoomTimeout = null;
       }
+      lastDistance = 0;
     };
 
     videoElement.addEventListener('touchstart', handleTouchStart, { passive: false });
