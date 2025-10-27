@@ -187,85 +187,85 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
     }
   }, [stream, hardwareZoomSupported]);
 
-  // Pinch to zoom for mobile
-  useEffect(() => {
-    const videoElement = videoRef.current;
-    if (!videoElement) return;
+  // COMMENTED OUT: Pinch to zoom for mobile (replaced with slider)
+  // useEffect(() => {
+  //   const videoElement = videoRef.current;
+  //   if (!videoElement) return;
 
-    let lastDistance = 0;
-    let pinchZoomTimeout: NodeJS.Timeout | null = null;
+  //   let lastDistance = 0;
+  //   let pinchZoomTimeout: NodeJS.Timeout | null = null;
 
-    const handleTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 2) {
-        e.preventDefault();
-        const touch1 = e.touches[0];
-        const touch2 = e.touches[1];
-        lastDistance = Math.hypot(
-          touch2.clientX - touch1.clientX,
-          touch2.clientY - touch1.clientY
-        );
-      }
-    };
+  //   const handleTouchStart = (e: TouchEvent) => {
+  //     if (e.touches.length === 2) {
+  //       e.preventDefault();
+  //       const touch1 = e.touches[0];
+  //       const touch2 = e.touches[1];
+  //       lastDistance = Math.hypot(
+  //         touch2.clientX - touch1.clientX,
+  //         touch2.clientY - touch1.clientY
+  //       );
+  //     }
+  //   };
 
-    const handleTouchMove = async (e: TouchEvent) => {
-      if (e.touches.length === 2) {
-        e.preventDefault();
-        const touch1 = e.touches[0];
-        const touch2 = e.touches[1];
-        const currentDistance = Math.hypot(
-          touch2.clientX - touch1.clientX,
-          touch2.clientY - touch1.clientY
-        );
+  //   const handleTouchMove = async (e: TouchEvent) => {
+  //     if (e.touches.length === 2) {
+  //       e.preventDefault();
+  //       const touch1 = e.touches[0];
+  //       const touch2 = e.touches[1];
+  //       const currentDistance = Math.hypot(
+  //         touch2.clientX - touch1.clientX,
+  //         touch2.clientY - touch1.clientY
+  //       );
         
-        // Calculate incremental zoom based on distance change
-        const distanceChange = currentDistance - lastDistance;
-        // Scale factor: 0.005 means moving fingers 100px apart = +0.5x zoom
-        const zoomChange = distanceChange * 0.005;
+  //       // Calculate incremental zoom based on distance change
+  //       const distanceChange = currentDistance - lastDistance;
+  //       // Scale factor: 0.005 means moving fingers 100px apart = +0.5x zoom
+  //       const zoomChange = distanceChange * 0.005;
         
-        const newZoom = Math.min(Math.max(zoom + zoomChange, zoomRange.min), zoomRange.max);
+  //       const newZoom = Math.min(Math.max(zoom + zoomChange, zoomRange.min), zoomRange.max);
         
-        if (Math.abs(newZoom - zoom) > 0.01) { // Only update if change is significant
-          setZoom(newZoom);
+  //       if (Math.abs(newZoom - zoom) > 0.01) { // Only update if change is significant
+  //         setZoom(newZoom);
           
-          // Apply hardware zoom in real-time with throttling
-          if (hardwareZoomSupported) {
-            if (pinchZoomTimeout) {
-              clearTimeout(pinchZoomTimeout);
-            }
-            pinchZoomTimeout = setTimeout(async () => {
-              await applyHardwareZoom(newZoom);
-            }, 50); // Throttle to every 50ms for smooth performance
-          }
-        }
+  //         // Apply hardware zoom in real-time with throttling
+  //         if (hardwareZoomSupported) {
+  //           if (pinchZoomTimeout) {
+  //             clearTimeout(pinchZoomTimeout);
+  //           }
+  //           pinchZoomTimeout = setTimeout(async () => {
+  //             await applyHardwareZoom(newZoom);
+  //           }, 50); // Throttle to every 50ms for smooth performance
+  //         }
+  //       }
         
-        lastDistance = currentDistance;
-      }
-    };
+  //       lastDistance = currentDistance;
+  //     }
+  //   };
 
-    const handleTouchEnd = () => {
-      // Clear any pending zoom application
-      if (pinchZoomTimeout) {
-        clearTimeout(pinchZoomTimeout);
-        pinchZoomTimeout = null;
-      }
-      lastDistance = 0;
-    };
+  //   const handleTouchEnd = () => {
+  //     // Clear any pending zoom application
+  //     if (pinchZoomTimeout) {
+  //       clearTimeout(pinchZoomTimeout);
+  //       pinchZoomTimeout = null;
+  //     }
+  //     lastDistance = 0;
+  //   };
 
-    videoElement.addEventListener('touchstart', handleTouchStart, { passive: false });
-    videoElement.addEventListener('touchmove', handleTouchMove, { passive: false });
-    videoElement.addEventListener('touchend', handleTouchEnd);
-    videoElement.addEventListener('touchcancel', handleTouchEnd);
+  //   videoElement.addEventListener('touchstart', handleTouchStart, { passive: false });
+  //   videoElement.addEventListener('touchmove', handleTouchMove, { passive: false });
+  //   videoElement.addEventListener('touchend', handleTouchEnd);
+  //   videoElement.addEventListener('touchcancel', handleTouchEnd);
 
-    return () => {
-      if (pinchZoomTimeout) {
-        clearTimeout(pinchZoomTimeout);
-      }
-      videoElement.removeEventListener('touchstart', handleTouchStart);
-      videoElement.removeEventListener('touchmove', handleTouchMove);
-      videoElement.removeEventListener('touchend', handleTouchEnd);
-      videoElement.removeEventListener('touchcancel', handleTouchEnd);
-    };
-  }, [zoom, hardwareZoomSupported, zoomRange, applyHardwareZoom]);
+  //   return () => {
+  //     if (pinchZoomTimeout) {
+  //       clearTimeout(pinchZoomTimeout);
+  //     }
+  //     videoElement.removeEventListener('touchstart', handleTouchStart);
+  //     videoElement.removeEventListener('touchmove', handleTouchMove);
+  //     videoElement.removeEventListener('touchend', handleTouchEnd);
+  //     videoElement.removeEventListener('touchcancel', handleTouchEnd);
+  //   };
+  // }, [zoom, hardwareZoomSupported, zoomRange, applyHardwareZoom]);
 
   const toggleFullscreen = async () => {
     if (!containerRef.current) return;
@@ -313,32 +313,43 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
     }
   };
 
-  const handleZoomIn = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const newZoom = Math.min(zoom + 0.5, zoomRange.max);
+  // COMMENTED OUT: +/- zoom buttons (replaced with slider)
+  // const handleZoomIn = async (e: React.MouseEvent) => {
+  //   e.stopPropagation();
+  //   const newZoom = Math.min(zoom + 0.5, zoomRange.max);
+  //   setZoom(newZoom);
+  //   
+  //   if (hardwareZoomSupported) {
+  //     await applyHardwareZoom(newZoom);
+  //   }
+  // };
+
+  // const handleZoomOut = async (e: React.MouseEvent) => {
+  //   e.stopPropagation();
+  //   const newZoom = Math.max(zoom - 0.5, zoomRange.min);
+  //   setZoom(newZoom);
+  //   
+  //   if (hardwareZoomSupported) {
+  //     await applyHardwareZoom(newZoom);
+  //   }
+  // };
+
+  // const resetZoom = async (e: React.MouseEvent) => {
+  //   e.stopPropagation();
+  //   setZoom(zoomRange.min);
+  //   
+  //   if (hardwareZoomSupported) {
+  //     await applyHardwareZoom(zoomRange.min);
+  //   }
+  // };
+
+  // New slider-based zoom handler
+  const handleZoomSlider = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newZoom = parseFloat(e.target.value);
     setZoom(newZoom);
     
     if (hardwareZoomSupported) {
       await applyHardwareZoom(newZoom);
-    }
-  };
-
-  const handleZoomOut = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const newZoom = Math.max(zoom - 0.5, zoomRange.min);
-    setZoom(newZoom);
-    
-    if (hardwareZoomSupported) {
-      await applyHardwareZoom(newZoom);
-    }
-  };
-
-  const resetZoom = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setZoom(zoomRange.min);
-    
-    if (hardwareZoomSupported) {
-      await applyHardwareZoom(zoomRange.min);
     }
   };
 
@@ -681,8 +692,8 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
           </div>
         )}
 
-        {/* Zoom Controls - Side Panel */}
-        {cameraActive && (
+        {/* COMMENTED OUT: Zoom Controls - Side Panel (+/- buttons) */}
+        {/* {cameraActive && (
           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2">
             <button
               onClick={handleZoomIn}
@@ -715,6 +726,26 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
                 </svg>
               </button>
             )}
+          </div>
+        )} */}
+
+        {/* NEW: Vertical Zoom Slider */}
+        {cameraActive && (
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2">
+            <input
+              type="range"
+              min={zoomRange.min}
+              max={zoomRange.max}
+              step="0.1"
+              value={zoom}
+              onChange={handleZoomSlider}
+              className="slider-vertical h-48 w-2 bg-black/70 rounded-full appearance-none cursor-pointer"
+              style={{
+                writingMode: 'bt-lr',
+                WebkitAppearance: 'slider-vertical',
+              }}
+              title={hardwareZoomSupported ? "Zoom (Hardware)" : "Zoom (Digital)"}
+            />
           </div>
         )}
 
@@ -874,7 +905,7 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
             Photos are automatically saved to your device and uploaded to the event
             {cameraActive && (
               <span className="block mt-1 text-xs text-gray-500 dark:text-gray-500">
-                💡 Pinch to zoom on mobile • Use zoom buttons
+                💡 Use the slider to zoom
                 {supportsFullscreen && ' • Click fullscreen for immersive mode'}
               </span>
             )}
