@@ -487,7 +487,7 @@ function ImageCard({ image, onDelete }: { image: Image; onDelete: (image: Image)
           }}
         />
       )}
-      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-70 transition-opacity flex items-center justify-center gap-2 pointer-events-none">
+      <div className="absolute inset-0 bg-opacity-0 group-hover:bg-opacity-70 transition-opacity flex items-center justify-center gap-2 pointer-events-none">
         <button
           onClick={downloadImage}
           className="opacity-0 group-hover:opacity-100 px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg font-semibold transition-opacity pointer-events-auto shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700"
