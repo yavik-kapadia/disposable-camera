@@ -3,8 +3,31 @@
 import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import CameraCapture from '@/components/CameraCapture';
-import ManualUpload from '@/components/ManualUpload';
+import dynamic from 'next/dynamic';
+
+// Lazy load heavy components - only load the one being used
+const CameraCapture = dynamic(() => import('@/components/CameraCapture'), {
+  loading: () => (
+    <div className="flex items-center justify-center p-8">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading camera...</p>
+      </div>
+    </div>
+  ),
+  ssr: false, // Camera needs browser APIs
+});
+
+const ManualUpload = dynamic(() => import('@/components/ManualUpload'), {
+  loading: () => (
+    <div className="flex items-center justify-center p-8">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading uploader...</p>
+      </div>
+    </div>
+  ),
+});
 
 interface Event {
   id: string;

@@ -4,9 +4,13 @@ import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import QRCodeGenerator from '@/components/QRCodeGenerator';
-import JSZip from 'jszip';
+import dynamic from 'next/dynamic';
 import { downloadFile, formatDate } from '@/utils/helpers';
+
+// Lazy load QRCodeGenerator - only needed for event creators
+const QRCodeGenerator = dynamic(() => import('@/components/QRCodeGenerator'), {
+  loading: () => <div className="w-[200px] h-[200px] bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />,
+});
 
 interface Event {
   id: string;
@@ -153,6 +157,8 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
 
     setDownloading(true);
     try {
+      // Lazy load JSZip only when needed (~100KB)
+      const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
       const folder = zip.folder(event?.name || 'event-photos');
 
@@ -536,6 +542,8 @@ function ImageCard({ image, onDelete }: { image: Image; onDelete: (image: Image)
         <img
           src={imageUrl}
           alt={image.file_name}
+          loading="lazy"
+          decoding="async"
           className="w-full h-full object-cover"
           onError={(e) => {
             console.error('[ImageCard] <img> onError triggered for:', imageUrl);
