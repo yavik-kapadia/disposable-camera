@@ -32,6 +32,8 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
   const [supportsFullscreen, setSupportsFullscreen] = useState(false);
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
   const [rotation, setRotation] = useState(0); // CSS rotation in degrees
+  const [hardwareZoomSupported, setHardwareZoomSupported] = useState(false);
+  const [zoomRange, setZoomRange] = useState({ min: 1, max: 3 });
   const containerRef = useRef<HTMLDivElement>(null);
 
   const startCamera = async () => {
@@ -61,15 +63,32 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
         setStream(mediaStream);
         setCameraActive(true);
         
-        // Log actual stream capabilities for debugging
+        // Check hardware capabilities
         const videoTrack = mediaStream.getVideoTracks()[0];
+        const capabilities = videoTrack.getCapabilities() as any;
         const settings = videoTrack.getSettings();
+        
+        console.log('Camera capabilities:', capabilities);
         console.log('Camera settings:', {
           width: settings.width,
           height: settings.height,
           frameRate: settings.frameRate,
           facingMode: settings.facingMode
         });
+        
+        // Check if hardware zoom is supported
+        if (capabilities.zoom) {
+          setHardwareZoomSupported(true);
+          setZoomRange({
+            min: capabilities.zoom.min || 1,
+            max: capabilities.zoom.max || 3
+          });
+          console.log('✓ Hardware zoom supported! Range:', capabilities.zoom.min, '-', capabilities.zoom.max);
+        } else {
+          console.log('✗ Hardware zoom not supported, using digital zoom');
+          setHardwareZoomSupported(false);
+          setZoomRange({ min: 1, max: 3 }); // Digital zoom range
+        }
         
         // Notify parent that camera has started
         if (onCameraStart) {
@@ -184,19 +203,28 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
           touch2.clientY - touch1.clientY
         );
         const scale = currentDistance / initialDistance;
-        const newZoom = Math.min(Math.max(initialZoom * scale, 1), 3);
+        const newZoom = Math.min(Math.max(initialZoom * scale, zoomRange.min), zoomRange.max);
         setZoom(newZoom);
+      }
+    };
+
+    const handleTouchEnd = async () => {
+      // Apply hardware zoom when pinch gesture ends
+      if (hardwareZoomSupported) {
+        await applyHardwareZoom(zoom);
       }
     };
 
     videoElement.addEventListener('touchstart', handleTouchStart, { passive: false });
     videoElement.addEventListener('touchmove', handleTouchMove, { passive: false });
+    videoElement.addEventListener('touchend', handleTouchEnd);
 
     return () => {
       videoElement.removeEventListener('touchstart', handleTouchStart);
       videoElement.removeEventListener('touchmove', handleTouchMove);
+      videoElement.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [zoom]);
+  }, [zoom, hardwareZoomSupported, zoomRange]);
 
   const toggleFullscreen = async () => {
     if (!containerRef.current) return;
@@ -244,19 +272,48 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
     }
   };
 
-  const handleZoomIn = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setZoom(prev => Math.min(prev + 0.5, 3));
+  // Apply hardware zoom to camera
+  const applyHardwareZoom = async (zoomLevel: number) => {
+    if (!stream || !hardwareZoomSupported) return;
+    
+    const videoTrack = stream.getVideoTracks()[0];
+    try {
+      await videoTrack.applyConstraints({
+        advanced: [{ zoom: zoomLevel } as any]
+      });
+      console.log('Hardware zoom applied:', zoomLevel);
+    } catch (err) {
+      console.error('Failed to apply hardware zoom:', err);
+    }
   };
 
-  const handleZoomOut = (e: React.MouseEvent) => {
+  const handleZoomIn = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    setZoom(prev => Math.max(prev - 0.5, 1));
+    const newZoom = Math.min(zoom + 0.5, zoomRange.max);
+    setZoom(newZoom);
+    
+    if (hardwareZoomSupported) {
+      await applyHardwareZoom(newZoom);
+    }
   };
 
-  const resetZoom = (e: React.MouseEvent) => {
+  const handleZoomOut = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    setZoom(1);
+    const newZoom = Math.max(zoom - 0.5, zoomRange.min);
+    setZoom(newZoom);
+    
+    if (hardwareZoomSupported) {
+      await applyHardwareZoom(newZoom);
+    }
+  };
+
+  const resetZoom = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setZoom(zoomRange.min);
+    
+    if (hardwareZoomSupported) {
+      await applyHardwareZoom(zoomRange.min);
+    }
   };
 
   // Timer countdown effect
@@ -574,7 +631,8 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
                    filter === 'sepia' ? 'sepia(100%)' : 
                    filter === 'vintage' ? 'saturate(80%) sepia(20%) hue-rotate(-10deg)' : 
                    'none',
-            transform: `scale(${zoom})`,
+            // Only apply CSS zoom if hardware zoom is not supported
+            transform: hardwareZoomSupported ? 'none' : `scale(${zoom})`,
             transition: 'transform 0.2s ease-out'
           }}
         />
@@ -588,9 +646,12 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
         )}
 
         {/* Zoom Level Indicator */}
-        {cameraActive && zoom > 1 && (
-          <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm font-semibold">
+        {cameraActive && zoom > zoomRange.min && (
+          <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm font-semibold flex items-center gap-1">
             {zoom.toFixed(1)}×
+            {hardwareZoomSupported && (
+              <span className="text-xs opacity-75" title="Hardware optical zoom">⚡</span>
+            )}
           </div>
         )}
 
@@ -599,9 +660,9 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2">
             <button
               onClick={handleZoomIn}
-              disabled={zoom >= 3}
+              disabled={zoom >= zoomRange.max}
               className="p-2 bg-black/70 hover:bg-black/90 rounded-full backdrop-blur-sm disabled:opacity-30 transition-all"
-              title="Zoom in"
+              title={hardwareZoomSupported ? "Zoom in (Hardware)" : "Zoom in (Digital)"}
             >
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -609,15 +670,15 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
             </button>
             <button
               onClick={handleZoomOut}
-              disabled={zoom <= 1}
+              disabled={zoom <= zoomRange.min}
               className="p-2 bg-black/70 hover:bg-black/90 rounded-full backdrop-blur-sm disabled:opacity-30 transition-all"
-              title="Zoom out"
+              title={hardwareZoomSupported ? "Zoom out (Hardware)" : "Zoom out (Digital)"}
             >
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
               </svg>
             </button>
-            {zoom > 1 && (
+            {zoom > zoomRange.min && (
               <button
                 onClick={resetZoom}
                 className="p-2 bg-black/70 hover:bg-black/90 rounded-full backdrop-blur-sm transition-all"
