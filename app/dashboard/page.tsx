@@ -118,37 +118,38 @@ export default function Dashboard() {
   const handleDeleteEvent = async (eventId: string, eventName: string) => {
     const confirmed = confirm(
       `Are you sure you want to delete "${eventName}"?\n\n` +
-      `⚠️ This will permanently delete the event and all photos.`
+      `⚠️ This will mark the event as deleted.\n` +
+      `Data will be kept for 14 days for recovery.`
     );
 
     if (!confirmed) return;
 
     try {
-      // Check if soft delete is available (deleted_at column exists)
-      const { error: updateError } = await supabase
+      console.log('Attempting to delete event:', eventId);
+      
+      // Soft delete: set deleted_at timestamp
+      const { data, error: updateError } = await supabase
         .from('events')
         .update({ deleted_at: new Date().toISOString() })
-        .eq('id', eventId);
+        .eq('id', eventId)
+        .select();
+
+      console.log('Update result:', { data, error: updateError });
 
       if (updateError) {
-        // If soft delete fails (column doesn't exist), use hard delete
-        console.log('Soft delete not available, using hard delete');
-        const { error: deleteError } = await supabase
-          .from('events')
-          .delete()
-          .eq('id', eventId);
-
-        if (deleteError) throw deleteError;
+        console.error('Soft delete failed:', updateError);
+        throw updateError;
       }
 
       // Remove from local state
       setEvents(events.filter(e => e.id !== eventId));
       
-      alert('Event deleted successfully.');
-    } catch (err) {
+      alert('Event deleted successfully. Data will be permanently removed after 14 days.');
+    } catch (err: any) {
       console.error('Error deleting event:', err);
-      setError('Failed to delete event: ' + (err instanceof Error ? err.message : 'Unknown error'));
-      alert('Failed to delete event. Please check console for details.');
+      const errorMessage = err?.message || err?.hint || 'Unknown error';
+      setError('Failed to delete event: ' + errorMessage);
+      alert('Failed to delete event:\n\n' + errorMessage + '\n\nCheck console for details.');
     }
   };
 

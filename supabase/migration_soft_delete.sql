@@ -26,13 +26,18 @@ CREATE POLICY "Anyone can read active non-deleted events"
   USING (is_active = true AND deleted_at IS NULL);
 
 -- Policy: Creators can update their events (including soft delete)
+-- Note: USING checks current state, so deleted_at should be NULL when setting it
 CREATE POLICY "Creators can update their own events"
   ON events FOR UPDATE
-  USING (auth.uid() = creator_id AND deleted_at IS NULL)
+  USING (auth.uid() = creator_id)
   WITH CHECK (auth.uid() = creator_id);
 
--- Policy: Only allow hard delete via service role (for cleanup function)
--- Users cannot hard delete, only soft delete via UPDATE
+-- Policy: Allow creators to hard delete their own events (optional, for cleanup)
+CREATE POLICY "Creators can delete their own events"
+  ON events FOR DELETE
+  USING (auth.uid() = creator_id);
+
+-- Policy: Service role can delete old soft-deleted events
 CREATE POLICY "Service role can delete old events"
   ON events FOR DELETE
   USING (deleted_at IS NOT NULL AND deleted_at < NOW() - INTERVAL '14 days');
