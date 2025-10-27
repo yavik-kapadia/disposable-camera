@@ -46,13 +46,30 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: facingMode,
-        },
+          width: { ideal: 1920, min: 1280 },
+          height: { ideal: 1080, min: 720 },
+          frameRate: { ideal: 60, min: 30 },
+          // Advanced constraints for better quality (not all devices support these)
+          focusMode: 'continuous',
+          exposureMode: 'continuous',
+          whiteBalanceMode: 'continuous',
+        } as MediaTrackConstraints,
       });
 
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         setStream(mediaStream);
         setCameraActive(true);
+        
+        // Log actual stream capabilities for debugging
+        const videoTrack = mediaStream.getVideoTracks()[0];
+        const settings = videoTrack.getSettings();
+        console.log('Camera settings:', {
+          width: settings.width,
+          height: settings.height,
+          frameRate: settings.frameRate,
+          facingMode: settings.facingMode
+        });
         
         // Notify parent that camera has started
         if (onCameraStart) {
