@@ -48,8 +48,9 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: facingMode,
-          width: { ideal: 1920, min: 1280 },
-          height: { ideal: 1080, min: 720 },
+          width: { ideal: 1600, min: 1024 },
+          height: { ideal: 1200, min: 768 },
+          aspectRatio: { ideal: 4/3 },
           frameRate: { ideal: 60, min: 30 },
           // Advanced constraints for better quality (not all devices support these)
           focusMode: 'continuous',
@@ -656,7 +657,7 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
           isFullscreen ? 'fixed inset-0 z-50 rounded-none' : 'rounded-2xl w-full max-w-4xl mx-auto'
         }`}
         style={{
-          aspectRatio: isFullscreen ? 'auto' : (orientation === 'landscape' ? '16/9' : '3/4')
+          aspectRatio: isFullscreen ? 'auto' : '4/3'
         }}
       >
         <video
