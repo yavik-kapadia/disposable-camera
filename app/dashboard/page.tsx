@@ -30,6 +30,8 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [selectedEvents, setSelectedEvents] = useState<Set<string>>(new Set());
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -164,6 +166,83 @@ export default function Dashboard() {
     console.log('❌ Delete cancelled by user');
     setShowDeleteConfirm(false);
     setEventToDelete(null);
+  };
+
+  // Bulk selection handlers
+  const toggleEventSelection = (eventId: string) => {
+    setSelectedEvents(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(eventId)) {
+        newSet.delete(eventId);
+      } else {
+        newSet.add(eventId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllEvents = () => {
+    if (selectedEvents.size === events.length) {
+      setSelectedEvents(new Set());
+    } else {
+      setSelectedEvents(new Set(events.map(e => e.id)));
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedEvents(new Set());
+  };
+
+  // Bulk actions
+  const handleBulkToggleActive = async (makeActive: boolean) => {
+    if (selectedEvents.size === 0) return;
+
+    try {
+      const selectedIds = Array.from(selectedEvents);
+      
+      const { error: updateError } = await supabase
+        .from('events')
+        .update({ is_active: makeActive })
+        .in('id', selectedIds);
+
+      if (updateError) throw updateError;
+
+      await fetchUserEvents();
+      clearSelection();
+    } catch (err: any) {
+      console.error('Error updating events:', err);
+      setError('Failed to update events: ' + err.message);
+    }
+  };
+
+  const handleBulkDeleteClick = () => {
+    if (selectedEvents.size === 0) return;
+    setShowBulkDeleteConfirm(true);
+  };
+
+  const handleBulkDeleteConfirm = async () => {
+    setShowBulkDeleteConfirm(false);
+
+    try {
+      const selectedIds = Array.from(selectedEvents);
+      
+      const { error: updateError } = await supabase
+        .from('events')
+        .update({ deleted_at: new Date().toISOString() })
+        .in('id', selectedIds);
+
+      if (updateError) throw updateError;
+
+      await fetchUserEvents();
+      clearSelection();
+    } catch (err: any) {
+      console.error('Error deleting events:', err);
+      setError('Failed to delete events: ' + err.message);
+    }
+  };
+
+  const handleBulkDeleteCancel = () => {
+    setShowBulkDeleteConfirm(false);
   };
 
   if (authLoading || loading) {
@@ -344,6 +423,64 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Bulk Actions Toolbar */}
+        {events.length > 0 && (
+          <div className="mb-6 bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 border border-orange-100 dark:border-gray-700">
+            <div className="flex flex-wrap items-center gap-4">
+              {/* Select All */}
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={selectedEvents.size === events.length && events.length > 0}
+                  onChange={selectAllEvents}
+                  className="w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                />
+                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 group-hover:text-orange-600 dark:group-hover:text-orange-400">
+                  Select All ({events.length})
+                </span>
+              </label>
+
+              {/* Selected Count */}
+              {selectedEvents.size > 0 && (
+                <>
+                  <div className="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
+                  <span className="text-sm font-bold text-orange-600 dark:text-orange-400">
+                    {selectedEvents.size} selected
+                  </span>
+                  
+                  {/* Bulk Action Buttons */}
+                  <div className="flex gap-2 ml-auto">
+                    <button
+                      onClick={() => handleBulkToggleActive(true)}
+                      className="px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg font-semibold hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors text-sm flex items-center gap-2"
+                    >
+                      ✅ Open
+                    </button>
+                    <button
+                      onClick={() => handleBulkToggleActive(false)}
+                      className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm flex items-center gap-2"
+                    >
+                      🔒 Close
+                    </button>
+                    <button
+                      onClick={handleBulkDeleteClick}
+                      className="px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg font-semibold hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors text-sm flex items-center gap-2"
+                    >
+                      🗑️ Delete
+                    </button>
+                    <button
+                      onClick={clearSelection}
+                      className="px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm border border-gray-300 dark:border-gray-600"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Events List */}
         {events.length === 0 ? (
           <div className="bg-linear-to-br from-white to-orange-50 dark:from-gray-900 dark:to-black rounded-2xl shadow-xl p-16 text-center border-2 border-dashed border-orange-300 dark:border-gray-700">
@@ -374,16 +511,33 @@ export default function Dashboard() {
             {events.map((event) => (
               <div
                 key={event.id}
-                className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all p-6 cursor-pointer border-2 border-transparent hover:border-orange-200 dark:hover:border-orange-500 hover:scale-[1.02] transform"
+                className={`group bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all p-6 cursor-pointer border-2 hover:scale-[1.02] transform ${
+                  selectedEvents.has(event.id)
+                    ? 'border-orange-500 dark:border-orange-400 bg-orange-50/50 dark:bg-orange-900/10'
+                    : 'border-transparent hover:border-orange-200 dark:hover:border-orange-500'
+                }`}
                 onClick={() => router.push(`/event/${event.id}`)}
               >
-                {/* Header with Icon and Status */}
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className="w-12 h-12 bg-linear-to-br from-orange-400 to-orange-500 rounded-xl flex items-center justify-center text-white text-xl shadow-md shrink-0">
-                      🎉
-                    </div>
-                    <div className="flex-1 min-w-0">
+                {/* Checkbox for selection */}
+                <div className="flex items-start gap-3 mb-4">
+                  <input
+                    type="checkbox"
+                    checked={selectedEvents.has(event.id)}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      toggleEventSelection(event.id);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-1 w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                  />
+                  
+                  {/* Header with Icon and Status */}
+                  <div className="flex justify-between items-start flex-1">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="w-12 h-12 bg-linear-to-br from-orange-400 to-orange-500 rounded-xl flex items-center justify-center text-white text-xl shadow-md shrink-0">
+                        🎉
+                      </div>
+                      <div className="flex-1 min-w-0">
                       <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1 truncate group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
                         {event.name}
                       </h3>
@@ -398,6 +552,7 @@ export default function Dashboard() {
                         {event.is_active ? 'Active' : 'Closed'}
                       </span>
                     </div>
+                  </div>
                   </div>
                 </div>
 
@@ -497,6 +652,46 @@ export default function Dashboard() {
                   className="flex-1 px-6 py-3 bg-red-600 dark:bg-red-700 text-white rounded-xl font-bold hover:bg-red-700 dark:hover:bg-red-600 transition-colors shadow-lg"
                 >
                   Delete Event
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bulk Delete Confirmation Modal */}
+        {showBulkDeleteConfirm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 border-2 border-red-500 dark:border-red-600">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-4xl">⚠️</span>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                  Delete {selectedEvents.size} Event{selectedEvents.size !== 1 ? 's' : ''}?
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  Are you sure you want to delete <strong className="text-gray-900 dark:text-gray-100">{selectedEvents.size} selected event{selectedEvents.size !== 1 ? 's' : ''}</strong>?
+                </p>
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-4">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                    ⚠️ This will mark all selected events as deleted.<br />
+                    Data will be kept for 14 days for recovery.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={handleBulkDeleteCancel}
+                  className="flex-1 px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-xl font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBulkDeleteConfirm}
+                  className="flex-1 px-6 py-3 bg-red-600 dark:bg-red-700 text-white rounded-xl font-bold hover:bg-red-700 dark:hover:bg-red-600 transition-colors shadow-lg"
+                >
+                  Delete {selectedEvents.size} Event{selectedEvents.size !== 1 ? 's' : ''}
                 </button>
               </div>
             </div>
