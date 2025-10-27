@@ -41,7 +41,7 @@ export default function EventDashboard({ params }: { params: Promise<{ id: strin
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const imagesPerPage = 10;
+  const imagesPerPage = 15;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const cameraUrl = event ? `${appUrl}/camera/${event.access_code}` : '';
