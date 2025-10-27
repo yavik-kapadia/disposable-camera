@@ -654,18 +654,19 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
       <div
         ref={containerRef}
         className={`relative bg-black overflow-hidden shadow-2xl transition-all duration-300 ${
-          isFullscreen ? 'fixed inset-0 z-50 rounded-none' : 'rounded-2xl w-full max-w-4xl mx-auto'
+          isFullscreen 
+            ? 'fixed inset-0 z-50 rounded-none' 
+            : orientation === 'landscape' 
+              ? 'rounded-2xl w-full max-w-6xl mx-auto px-4' 
+              : 'rounded-2xl w-full h-[70vh] mx-auto'
         }`}
-        style={{
-          aspectRatio: isFullscreen ? 'auto' : '4/3'
-        }}
       >
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
-          className="w-full h-full object-contain"
+          className="w-full h-full object-cover"
           style={{
             filter: filter === 'bw' ? 'grayscale(100%)' : 
                    filter === 'sepia' ? 'sepia(100%)' : 
