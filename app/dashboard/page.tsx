@@ -14,6 +14,7 @@ interface Event {
   creator_name: string | null;
   created_at: string;
   is_active: boolean;
+  deleted_at: string | null;
   image_count?: number;
 }
 
@@ -111,6 +112,34 @@ export default function Dashboard() {
   const handleSignOut = async () => {
     await signOut();
     router.push('/');
+  };
+
+  const handleDeleteEvent = async (eventId: string, eventName: string) => {
+    const confirmed = confirm(
+      `Are you sure you want to delete "${eventName}"?\n\n` +
+      `⚠️ This will mark the event as deleted, but data will remain for 14 days.\n` +
+      `After 14 days, the event and all photos will be permanently deleted.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      // Soft delete: set deleted_at timestamp
+      const { error } = await supabase
+        .from('events')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', eventId);
+
+      if (error) throw error;
+
+      // Remove from local state
+      setEvents(events.filter(e => e.id !== eventId));
+      
+      alert('Event deleted successfully. You have 14 days to contact support if you need to recover it.');
+    } catch (err) {
+      console.error('Error deleting event:', err);
+      setError('Failed to delete event');
+    }
   };
 
   if (authLoading || loading) {
@@ -383,16 +412,27 @@ export default function Dashboard() {
                   <span>Created {formatDate(event.created_at)}</span>
                 </div>
 
-                {/* Action Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    router.push(`/event/${event.id}`);
-                  }}
-                  className="w-full py-3 bg-linear-to-r from-orange-500 to-orange-600 dark:from-orange-600 dark:to-orange-700 text-white rounded-xl font-bold hover:from-orange-600 hover:to-orange-700 dark:hover:from-orange-500 dark:hover:to-orange-600 transition-all shadow-md hover:shadow-lg group-hover:scale-[1.05] transform"
-                >
-                  View Event →
-                </button>
+                {/* Action Buttons */}
+                <div className="space-y-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/event/${event.id}`);
+                    }}
+                    className="w-full py-3 bg-linear-to-r from-orange-500 to-orange-600 dark:from-orange-600 dark:to-orange-700 text-white rounded-xl font-bold hover:from-orange-600 hover:to-orange-700 dark:hover:from-orange-500 dark:hover:to-orange-600 transition-all shadow-md hover:shadow-lg group-hover:scale-[1.05] transform"
+                  >
+                    View Event →
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteEvent(event.id, event.name);
+                    }}
+                    className="w-full py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg font-semibold hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors text-sm"
+                  >
+                    🗑️ Delete Event
+                  </button>
+                </div>
               </div>
             ))}
           </div>

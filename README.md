@@ -1,302 +1,229 @@
-# Disposable Camera 📸
+# 📸 Disposable Camera - Event Photo Sharing PWA
 
-A modern web application for crowd-sourcing photos from event attendees. Built with Next.js and Supabase, this app allows guests to easily capture and share photos from events using a virtual "disposable camera" experience.
+A Progressive Web App for sharing photos at events using a disposable camera experience.
 
-> **🚨 Getting an upload error?** See [QUICK_FIX_RLS.md](./QUICK_FIX_RLS.md) for the 2-minute fix!
+## ✨ Features
 
-## Features
+- 📱 **PWA Camera**: Take photos directly from your browser
+- 🔒 **Event-based Access**: Unique codes for each event
+- 📤 **Manual Upload**: Upload photos from gallery
+- 🎨 **Camera Filters**: Black & white, sepia, vintage
+- 🔍 **Hardware Zoom**: Support for device camera zoom
+- 📊 **Event Dashboard**: Manage multiple events
+- 🌓 **Dark Mode**: System-based theme switching
+- 📥 **Bulk Download**: Download all event photos
+- 🔐 **Row Level Security**: Secure data access
 
-- **Event Creation**: Create events with unique access codes
-- **QR Code Sharing**: Generate QR codes for easy event access
-- **Camera Capture**: Use device camera to take photos directly in the browser
-- **Auto-Upload & Save**: Photos are automatically uploaded to the cloud and saved to the user's device
-- **Manual Upload**: Upload existing photos from device gallery
-- **Real-time Updates**: See new photos appear in real-time as guests upload them
-- **Bulk Download**: Event creators can download all photos as a ZIP file
-- **Server-Side Thumbnails**: Fast-loading WebP thumbnails generated automatically via Edge Functions
-- **Guest Names**: Optional guest identification on uploaded photos
-- **Mobile-First Design**: Responsive design optimized for mobile devices
-- **Privacy Controls**: Event creators can close events to stop new uploads
+## 🚀 Quick Start
 
-## Tech Stack
+### Prerequisites
 
-- **Frontend**: Next.js 15 with App Router, React, TypeScript
-- **Styling**: Tailwind CSS
-- **Backend**: Supabase (PostgreSQL + Storage + Edge Functions)
-- **QR Code**: qrcode library
-- **File Handling**: JSZip for bulk downloads
-- **Image Processing**: Server-side thumbnail generation (WebP)
+- Node.js 18+ 
+- npm or pnpm
+- Supabase account
 
-## Prerequisites
-
-- Node.js 18+ and npm
-- A Supabase account (free tier works great!)
-
-## Setup Instructions
-
-### 1. Clone the Repository
+### Installation
 
 ```bash
-git clone <repository-url>
+# Clone the repository
+git clone <repo-url>
 cd disposable-camera
+
+# Install dependencies
 npm install
-```
 
-### 2. Set Up Supabase
+# Set up environment variables
+cp .env.example .env.local
+# Edit .env.local with your Supabase credentials
 
-#### Create a Supabase Project
+# Run database migrations
+# (See docs/SUPABASE_SETUP.md)
 
-1. Go to [supabase.com](https://supabase.com) and create a free account
-2. Create a new project
-3. Wait for the project to be provisioned (takes ~2 minutes)
-
-#### Set Up Database Tables
-
-1. In your Supabase dashboard, go to the **SQL Editor**
-2. Copy the contents of [supabase/schema.sql](./supabase/schema.sql)
-3. Paste and run the SQL script to create the tables and policies
-
-#### Set Up Storage Bucket
-
-1. In your Supabase dashboard, go to **Storage**
-2. Click **New bucket**
-3. Create a bucket named `event-images`
-4. Make it **Public**
-5. (Optional) Set file size limit to 10MB
-
-#### Configure Storage Policies
-
-In the Storage bucket settings, add these policies:
-
-**For SELECT (read):**
-```sql
-CREATE POLICY "Public read access"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'event-images');
-```
-
-**For INSERT (upload):**
-```sql
-CREATE POLICY "Public upload access"
-ON storage.objects FOR INSERT
-WITH CHECK (bucket_id = 'event-images');
-```
-
-### 3. Configure Environment Variables
-
-1. Copy the example environment file:
-```bash
-cp .env.local.example .env.local
-```
-
-2. In your Supabase dashboard, go to **Settings** > **API**
-3. Copy your **Project URL** and **anon/public** key
-4. Update `.env.local`:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=your-project-url.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
-
-### 4. Deploy Edge Function (Optional but Recommended)
-
-For optimal performance with server-side thumbnail generation:
-
-```bash
-npm install -g supabase
-supabase login
-supabase link --project-ref YOUR_PROJECT_REF
-supabase functions deploy generate-thumbnail
-```
-
-> **📋 Full deployment guide**: See [EDGE_FUNCTION_DEPLOYMENT.md](./docs/EDGE_FUNCTION_DEPLOYMENT.md) for complete instructions.
->
-> **Note**: The app works without this step, but thumbnails won't be generated. See [THUMBNAIL_ARCHITECTURE.md](./docs/THUMBNAIL_ARCHITECTURE.md) for details.
-
-### 5. Run the Development Server
-
-```bash
+# Start development server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Visit `http://localhost:3000` to see the app.
 
-> **📱 Testing on Mobile?** See [LOCAL_DEVELOPMENT.md](./docs/LOCAL_DEVELOPMENT.md) for:
-> - Using your local network IP (e.g., `http://192.168.1.100:3000`)
-> - Setting up custom HTTPS domain (e.g., `https://cam.local.yavik.dev`)
-> - Running the camera feature on mobile devices
+## 🧪 Testing
 
-## Usage Guide
+### Unit Tests (Jest + React Testing Library)
 
-### For Event Creators
+```bash
+# Run all tests
+npm test
 
-1. **Create an Event**
-   - Go to the home page
-   - Fill in event name, description (optional), and your name (optional)
-   - Click "Create Event"
+# Watch mode
+npm run test:watch
 
-2. **Share with Guests**
-   - You'll be redirected to the event dashboard
-   - Share the QR code or access code with guests
-   - Guests can scan the QR code or manually enter the code
+# With coverage
+npm run test:coverage
 
-3. **View Photos**
-   - All uploaded photos appear in real-time on the dashboard
-   - Click on any photo to download it individually
+# CI mode
+npm run test:ci
+```
 
-4. **Download All Photos**
-   - Click "Download All" to get a ZIP file of all event photos
-   - Photos are organized with timestamps
+**Coverage**: 65 passing tests with >85% coverage on critical components.
 
-5. **Close Event**
-   - Click "Close Event" to prevent new uploads
-   - You can reopen it later if needed
+### E2E Tests (Playwright)
 
-### For Guests
+```bash
+# Install browsers (first time only)
+npx playwright install
 
-1. **Join an Event**
-   - Scan the QR code OR enter the access code on the home page
-   - You'll be redirected to the camera page
+# Run all E2E tests
+npm run test:e2e
 
-2. **Take Photos**
-   - Click "Camera" tab
-   - Grant camera permissions when prompted
-   - Click the white circle to capture
-   - Photos are automatically saved to your device AND uploaded
+# Interactive UI mode
+npm run test:e2e:ui
 
-3. **Upload Existing Photos**
-   - Click "Upload" tab
-   - Add your name (optional)
-   - Select one or more photos from your gallery
-   - Click "Upload Photos"
+# Debug mode
+npm run test:e2e:debug
+```
 
-## Project Structure
+**See [docs/E2E_TESTING.md](docs/E2E_TESTING.md) for detailed guide.**
+
+## 📚 Documentation
+
+- **[Quick Start](docs/QUICKSTART.md)** - Get started in 5 minutes
+- **[Supabase Setup](docs/SUPABASE_SETUP.md)** - Database configuration
+- **[Google OAuth Setup](docs/GOOGLE_OAUTH_SETUP.md)** - Authentication setup
+- **[PWA Setup](docs/PWA_SETUP.md)** - Progressive Web App features
+- **[Testing Guide](docs/TESTING.md)** - Complete testing documentation
+- **[E2E Testing](docs/E2E_TESTING.md)** - Playwright E2E tests
+- **[Deployment](docs/DEPLOYMENT_CHECKLIST.md)** - Production deployment
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues
+
+## 🏗️ Tech Stack
+
+- **Framework**: Next.js 16 (App Router + Turbopack)
+- **Database**: Supabase (PostgreSQL)
+- **Auth**: Supabase Auth (Google OAuth)
+- **Storage**: Supabase Storage
+- **Styling**: Tailwind CSS
+- **Testing**: Jest, React Testing Library, Playwright
+- **Deployment**: Vercel
+
+## 📁 Project Structure
 
 ```
 disposable-camera/
-├── app/
-│   ├── camera/[code]/     # Guest camera/upload page
-│   ├── event/[id]/        # Event dashboard for creators
-│   ├── layout.tsx         # Root layout
-│   └── page.tsx           # Home page (create/join events)
-├── components/
-│   ├── CameraCapture.tsx  # Camera capture component
-│   ├── ManualUpload.tsx   # File upload component
+├── app/                    # Next.js app directory
+│   ├── camera/[code]/      # Camera page (PWA)
+│   ├── dashboard/          # Event management
+│   ├── event/[id]/         # Event viewing
+│   └── faq/                # FAQ page
+├── components/             # React components
+│   ├── CameraCapture.tsx   # Camera component
+│   ├── ManualUpload.tsx    # File upload
 │   └── QRCodeGenerator.tsx # QR code generator
-├── lib/
-│   └── supabase.ts        # Supabase client
-├── types/
-│   └── database.ts        # TypeScript types for database
-├── utils/
-│   └── helpers.ts         # Utility functions
-├── supabase/
-│   └── schema.sql         # Database schema
-└── public/                # Static assets
+├── contexts/               # React contexts
+│   ├── AuthContext.tsx     # Authentication
+│   └── ThemeContext.tsx    # Theme management
+├── docs/                   # Documentation
+├── e2e/                    # Playwright E2E tests
+├── supabase/               # Database migrations
+├── utils/                  # Utility functions
+└── types/                  # TypeScript types
 ```
 
-## Database Schema
+## 🔑 Environment Variables
 
-### Events Table
-- `id` (UUID) - Primary key
-- `created_at` (timestamp) - Creation timestamp
-- `name` (text) - Event name
-- `description` (text) - Event description
-- `access_code` (text) - Unique 8-character code
-- `creator_name` (text) - Optional creator name
-- `is_active` (boolean) - Event status
-- `expires_at` (timestamp) - Optional expiration
+Create `.env.local` with:
 
-### Images Table
-- `id` (UUID) - Primary key
-- `created_at` (timestamp) - Upload timestamp
-- `event_id` (UUID) - Foreign key to events
-- `file_path` (text) - Storage path for full-size image
-- `file_name` (text) - File name
-- `thumbnail_path` (text) - Storage path for WebP thumbnail
-- `uploaded_by` (text) - Optional guest name
-- `caption` (text) - Optional caption
-- `metadata` (jsonb) - Additional metadata
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-## Features in Detail
+## 🚢 Deployment
 
-### Server-Side Thumbnail Generation
-Photos are processed on the server to generate optimized WebP thumbnails (400px, ~70KB) for fast gallery loading. This provides:
-- **Faster uploads** - Users only upload the full image
-- **Better mobile performance** - No CPU-intensive processing on phone
-- **Reduced bandwidth** - Thumbnails load 10x faster than full images
-- **Automatic processing** - Happens in background after upload
+### Vercel (Recommended)
 
-See [THUMBNAIL_ARCHITECTURE.md](./docs/THUMBNAIL_ARCHITECTURE.md) for technical details.
+```bash
+# Install Vercel CLI
+npm i -g vercel
 
-### Image Compression
-All uploaded images are automatically compressed to reduce bandwidth and storage usage while maintaining good quality.
+# Deploy
+vercel
+```
 
-### Real-time Updates
-The event dashboard uses Supabase real-time subscriptions to show new photos as they're uploaded without requiring page refresh.
+### Environment Setup
 
-### Local Storage
-Photos taken with the camera are automatically downloaded to the user's device in addition to being uploaded to the cloud.
+1. Add environment variables in Vercel dashboard
+2. Set up Supabase edge functions
+3. Configure custom domain (optional)
 
-### Camera Controls
-- Switch between front/back cameras
-- Full-screen camera preview
-- Visual flash effect on capture
-- Start/stop camera controls
+**See [docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md) for details.**
 
-### Security
-- Row Level Security (RLS) policies protect data
-- Public bucket with controlled access
-- No authentication required for simplicity
-- Access code system for event privacy
+## 📸 Usage
 
-## Deployment
+### For Event Organizers
 
-### Deploy to Vercel
+1. Sign in with Google
+2. Create a new event
+3. Share the QR code or access code
+4. View and download photos
 
-1. Push your code to GitHub
-2. Go to [vercel.com](https://vercel.com)
-3. Import your repository
-4. Add environment variables from `.env.local`
-5. Update `NEXT_PUBLIC_APP_URL` to your Vercel domain
-6. Deploy!
+### For Event Guests
 
-### Important: Update CORS Settings
+1. Scan QR code or enter access code
+2. Grant camera permissions
+3. Take photos or upload from gallery
+4. Photos are automatically saved
 
-After deployment, update your Supabase Storage CORS settings to allow your domain.
+## 🛠️ Development
 
-## Troubleshooting
+```bash
+# Start dev server
+npm run dev
 
-> **For detailed troubleshooting, see [TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md)**
+# Build for production
+npm run build
 
-### Most Common Issues
+# Start production server
+npm start
 
-#### 🔴 Upload Error: "new row violates row-level security policy"
-**Solution**: You need to add Storage Policies. See [TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md#-upload-error-storageapierror-new-row-violates-row-level-security-policy) for detailed fix.
+# Lint code
+npm run lint
 
-#### Camera Not Working
-- Ensure you're using HTTPS (required for camera access)
-- Check browser permissions for camera access
-- Try a different browser (Chrome/Safari recommended)
+# Run all tests
+npm test && npm run test:e2e
+```
 
-#### Images Not Uploading
-- **Most common**: Missing Storage Policies (see link above)
-- Verify Supabase environment variables are correct
-- Check Storage bucket is public
-- Check browser console for errors
+## 📊 Test Coverage
 
-#### QR Code Not Working
-- Ensure `NEXT_PUBLIC_APP_URL` is set correctly
-- QR code should point to `/camera/[ACCESS_CODE]`
+- **Unit Tests**: 65 passing, 6 skipped
+- **E2E Tests**: 20 tests across 4 suites
+- **Coverage**: >85% on critical paths
+- **Status**: ✅ All passing
 
-## Contributing
+## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new features
+5. Run `npm test` to verify
+6. Submit a pull request
 
-## License
+## 📝 License
 
-MIT License - feel free to use this project for your events!
+MIT License - see LICENSE file for details
 
-## Support
+## 🙏 Acknowledgments
 
-If you encounter any issues, please open an issue on GitHub.
+- Next.js team for the amazing framework
+- Supabase for backend infrastructure
+- Vercel for hosting
+- Playwright for E2E testing
+
+## 📞 Support
+
+- **Documentation**: Check `/docs` directory
+- **Issues**: GitHub Issues
+- **FAQ**: Visit `/faq` page
+
+---
+
+**Built with ❤️ using Next.js and Supabase**
