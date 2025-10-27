@@ -741,8 +741,7 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
               onChange={handleZoomSlider}
               className="slider-vertical h-48 w-2 bg-black/70 rounded-full appearance-none cursor-pointer"
               style={{
-                writingMode: 'bt-lr',
-                WebkitAppearance: 'slider-vertical',
+                WebkitAppearance: 'slider-vertical' as any,
               }}
               title={hardwareZoomSupported ? "Zoom (Hardware)" : "Zoom (Digital)"}
             />
