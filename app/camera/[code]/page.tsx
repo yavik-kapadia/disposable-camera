@@ -148,10 +148,10 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-orange-50 via-orange-100 to-orange-50">
-        <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-linear-to-br from-orange-50 via-orange-100 to-orange-50 flex flex-col">
+        <div className="container mx-auto px-4 py-4 flex-1 flex flex-col">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-4">
           <h1 className="text-4xl font-bold mb-2 bg-linear-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">
             {event.name}
           </h1>
@@ -249,7 +249,7 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
         </div>
 
         {/* Mode Toggle */}
-        <div className="flex justify-center mb-8">
+        <div className="flex justify-center mb-4">
           <div className="inline-flex bg-white rounded-lg shadow-md p-1">
             <button
               onClick={() => setMode('camera')}
@@ -274,21 +274,23 @@ export default function CameraPage({ params }: { params: Promise<{ code: string 
           </div>
         </div>
 
-        {/* Content */}
-        <div className="max-w-4xl mx-auto">
-          {mode === 'camera' ? (
-            <CameraCapture 
-              eventId={event.id} 
-              onUploadSuccess={handleUploadSuccess}
-              onCameraStart={() => setCameraStarted(true)}
-            />
-          ) : (
-            <ManualUpload eventId={event.id} onUploadSuccess={handleUploadSuccess} />
-          )}
+        {/* Content - Centered */}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-full">
+            {mode === 'camera' ? (
+              <CameraCapture 
+                eventId={event.id} 
+                onUploadSuccess={handleUploadSuccess}
+                onCameraStart={() => setCameraStarted(true)}
+              />
+            ) : (
+              <ManualUpload eventId={event.id} onUploadSuccess={handleUploadSuccess} />
+            )}
+          </div>
         </div>
 
         {/* Back Button */}
-        <div className="text-center mt-8">
+        <div className="text-center py-4">
           <button
             onClick={() => router.push('/')}
             className="text-orange-600 hover:text-orange-700 font-semibold"
