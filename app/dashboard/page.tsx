@@ -118,28 +118,37 @@ export default function Dashboard() {
   const handleDeleteEvent = async (eventId: string, eventName: string) => {
     const confirmed = confirm(
       `Are you sure you want to delete "${eventName}"?\n\n` +
-      `⚠️ This will mark the event as deleted, but data will remain for 14 days.\n` +
-      `After 14 days, the event and all photos will be permanently deleted.`
+      `⚠️ This will permanently delete the event and all photos.`
     );
 
     if (!confirmed) return;
 
     try {
-      // Soft delete: set deleted_at timestamp
-      const { error } = await supabase
+      // Check if soft delete is available (deleted_at column exists)
+      const { error: updateError } = await supabase
         .from('events')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', eventId);
 
-      if (error) throw error;
+      if (updateError) {
+        // If soft delete fails (column doesn't exist), use hard delete
+        console.log('Soft delete not available, using hard delete');
+        const { error: deleteError } = await supabase
+          .from('events')
+          .delete()
+          .eq('id', eventId);
+
+        if (deleteError) throw deleteError;
+      }
 
       // Remove from local state
       setEvents(events.filter(e => e.id !== eventId));
       
-      alert('Event deleted successfully. You have 14 days to contact support if you need to recover it.');
+      alert('Event deleted successfully.');
     } catch (err) {
       console.error('Error deleting event:', err);
-      setError('Failed to delete event');
+      setError('Failed to delete event: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      alert('Failed to delete event. Please check console for details.');
     }
   };
 
