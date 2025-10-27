@@ -422,9 +422,10 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    // Account for zoom level - capture only the visible portion
-    if (zoom > 1) {
-      // Calculate the source rectangle (the part of video that's visible when zoomed)
+    // Account for zoom level - but only apply digital zoom cropping if hardware zoom is NOT being used
+    // When hardware zoom is active, the video stream is already zoomed, so capture the entire frame
+    if (zoom > 1 && !hardwareZoomSupported) {
+      // Digital zoom: Calculate the source rectangle (the part of video that's visible when zoomed)
       const sourceWidth = video.videoWidth / zoom;
       const sourceHeight = video.videoHeight / zoom;
       const sourceX = (video.videoWidth - sourceWidth) / 2;
@@ -437,7 +438,8 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
         0, 0, canvas.width, canvas.height              // destination rectangle
       );
     } else {
-      // No zoom - draw entire video frame
+      // No zoom OR hardware zoom is active - draw entire video frame
+      // (hardware zoom is already applied to the video stream)
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
     }
 
