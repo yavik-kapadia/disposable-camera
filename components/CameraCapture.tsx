@@ -328,8 +328,24 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    // Draw video frame to canvas
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // Account for zoom level - capture only the visible portion
+    if (zoom > 1) {
+      // Calculate the source rectangle (the part of video that's visible when zoomed)
+      const sourceWidth = video.videoWidth / zoom;
+      const sourceHeight = video.videoHeight / zoom;
+      const sourceX = (video.videoWidth - sourceWidth) / 2;
+      const sourceY = (video.videoHeight - sourceHeight) / 2;
+      
+      // Draw the cropped portion and scale it up to fill the canvas
+      context.drawImage(
+        video,
+        sourceX, sourceY, sourceWidth, sourceHeight,  // source rectangle
+        0, 0, canvas.width, canvas.height              // destination rectangle
+      );
+    } else {
+      // No zoom - draw entire video frame
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    }
 
     // Apply filter
     if (filter !== 'none') {
