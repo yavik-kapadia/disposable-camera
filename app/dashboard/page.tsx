@@ -28,6 +28,8 @@ export default function Dashboard() {
   const [description, setDescription] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [eventToDelete, setEventToDelete] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -115,23 +117,26 @@ export default function Dashboard() {
     router.push('/');
   };
 
-  const handleDeleteEvent = async (eventId: string, eventName: string) => {
-    const confirmed = confirm(
-      `Are you sure you want to delete "${eventName}"?\n\n` +
-      `⚠️ This will mark the event as deleted.\n` +
-      `Data will be kept for 14 days for recovery.`
-    );
+  const handleDeleteClick = (eventId: string, eventName: string) => {
+    console.log('🗑️ DELETE CLICKED:', { eventId, eventName });
+    setEventToDelete({ id: eventId, name: eventName });
+    setShowDeleteConfirm(true);
+  };
 
-    if (!confirmed) return;
+  const handleDeleteConfirm = async () => {
+    if (!eventToDelete) return;
+    
+    console.log('✅ Delete confirmed, proceeding...');
+    setShowDeleteConfirm(false);
 
     try {
-      console.log('Attempting to delete event:', eventId);
+      console.log('Attempting to delete event:', eventToDelete.id);
       
       // Soft delete: set deleted_at timestamp
       const { data, error: updateError } = await supabase
         .from('events')
         .update({ deleted_at: new Date().toISOString() })
-        .eq('id', eventId)
+        .eq('id', eventToDelete.id)
         .select();
 
       console.log('Update result:', { data, error: updateError });
@@ -142,18 +147,23 @@ export default function Dashboard() {
       }
 
       // Remove from local state
-      setEvents(events.filter(e => e.id !== eventId));
+      setEvents(events.filter(e => e.id !== eventToDelete.id));
       
       // Also refetch to ensure server-side filter is applied
       await fetchUserEvents();
       
-      alert('Event deleted successfully. Data will be permanently removed after 14 days.');
+      setEventToDelete(null);
     } catch (err: any) {
       console.error('Error deleting event:', err);
       const errorMessage = err?.message || err?.hint || 'Unknown error';
       setError('Failed to delete event: ' + errorMessage);
-      alert('Failed to delete event:\n\n' + errorMessage + '\n\nCheck console for details.');
     }
+  };
+
+  const handleDeleteCancel = () => {
+    console.log('❌ Delete cancelled by user');
+    setShowDeleteConfirm(false);
+    setEventToDelete(null);
   };
 
   if (authLoading || loading) {
@@ -440,7 +450,7 @@ export default function Dashboard() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDeleteEvent(event.id, event.name);
+                      handleDeleteClick(event.id, event.name);
                     }}
                     className="w-full py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg font-semibold hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors text-sm"
                   >
@@ -450,6 +460,46 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && eventToDelete && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 border-2 border-red-500 dark:border-red-600">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-4xl">⚠️</span>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                  Delete Event?
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  Are you sure you want to delete <strong className="text-gray-900 dark:text-gray-100">"{eventToDelete.name}"</strong>?
+                </p>
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-4">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                    ⚠️ This will mark the event as deleted.<br />
+                    Data will be kept for 14 days for recovery.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={handleDeleteCancel}
+                  className="flex-1 px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-xl font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  className="flex-1 px-6 py-3 bg-red-600 dark:bg-red-700 text-white rounded-xl font-bold hover:bg-red-700 dark:hover:bg-red-600 transition-colors shadow-lg"
+                >
+                  Delete Event
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
