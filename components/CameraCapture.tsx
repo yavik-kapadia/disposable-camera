@@ -657,7 +657,7 @@ export default function CameraCapture({ eventId, onUploadSuccess, onCameraStart 
           isFullscreen 
             ? 'fixed inset-0 z-50 rounded-none' 
             : orientation === 'landscape' 
-              ? 'rounded-2xl w-full max-w-6xl mx-auto px-4' 
+              ? 'rounded-2xl w-full max-w-5xl h-[60vh] mx-auto' 
               : 'rounded-2xl w-full h-[70vh] mx-auto'
         }`}
       >
